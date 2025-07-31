@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace DockerBackup\Command;
 
 use DockerBackup\Service\ImageBackupService;
-use DockerBackup\ValueObject\ImageBackupResult;
+use DockerBackup\Trait\ArgumentValidationTrait;
+use DockerBackup\Trait\ListableResourceTrait;
+use DockerBackup\Trait\ProgressDisplayTrait;
+use DockerBackup\ValueObject\DockerImage;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -15,6 +18,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 final class BackupImagesCommand extends Command
 {
+    use ProgressDisplayTrait, ListableResourceTrait, ArgumentValidationTrait;
+
     public function __construct(
         private readonly ImageBackupService $imageBackupService
     ) {
@@ -85,18 +90,14 @@ HELP
 
         // Handle list option
         if ($input->getOption('list')) {
-            return $this->listAvailableImages($io);
+            return $this->handleListOption($io, $input);
         }
 
         $imageReferences = $input->getArgument('images');
         $compress = !$input->getOption('no-compression');
 
         // Check if images argument is provided
-        if (empty($imageReferences)) {
-            $io->error('You must specify at least one image name or ID, or use --list to see available images.');
-            $io->text('Usage: backup:images nginx:latest [mysql:8.0 ...]');
-            $io->text('   or: backup:images --list');
-
+        if (!$this->validateRequiredArguments($imageReferences, $io)) {
             return Command::FAILURE;
         }
 
@@ -125,7 +126,11 @@ HELP
         $io->writeln(sprintf('Starting backup of <info>%d</info> image(s)...', count($imageReferences)));
         $io->newLine();
 
-        $results = $this->performBackupsWithProgress($imageReferences, $outputDir, $compress, $io);
+        $results = $this->performOperationsWithProgress(
+            $imageReferences,
+            $io,
+            fn($imageReference) => $this->imageBackupService->backupSingleImage($imageReference, $outputDir, $compress)
+        );
 
         $this->displaySummary($io, $results);
 
@@ -133,38 +138,6 @@ HELP
         $failedCount = count(array_filter($results, fn ($r) => $r->isFailed()));
 
         return $failedCount > 0 ? Command::FAILURE : Command::SUCCESS;
-    }
-
-    private function listAvailableImages(SymfonyStyle $io): int
-    {
-        $images = $this->imageBackupService->getAvailableImages();
-
-        if (empty($images)) {
-            $io->warning('No Docker images found.');
-
-            return Command::SUCCESS;
-        }
-
-        $io->title('Available Docker Images');
-
-        $tableData = [];
-        foreach ($images as $image) {
-            $tags = empty($image->repoTags) ? ['<none>'] : $image->repoTags;
-
-            foreach ($tags as $tag) {
-                $tableData[] = [
-                    $tag,
-                    $image->getShortId(),
-                    $image->getFormattedSize(),
-                    $this->formatCreatedDate($image->created),
-                ];
-            }
-        }
-
-        $io->table(['Repository:Tag', 'Image ID', 'Size', 'Created'], $tableData);
-        $io->text(sprintf('Total: <info>%d</info> images', count($images)));
-
-        return Command::SUCCESS;
     }
 
     private function extractImageReferences(array $images): array
@@ -216,89 +189,6 @@ HELP
         return $invalid;
     }
 
-    private function performBackupsWithProgress(array $imageReferences, string $outputDir, bool $compress, SymfonyStyle $io): array
-    {
-        $results = [];
-        $totalCount = count($imageReferences);
-
-        foreach ($imageReferences as $index => $imageReference) {
-            $currentIndex = $index + 1;
-
-            // Show what we're doing
-            $io->write(sprintf('[%d/%d] 💾 Backing up <info>%s</info>... ', $currentIndex, $totalCount, $imageReference));
-
-            // Perform the backup with timing
-            $startTime = microtime(true);
-            $result = $this->imageBackupService->backupSingleImage($imageReference, $outputDir, $compress);
-            $duration = round(microtime(true) - $startTime, 2);
-
-            // Clear the line and show result
-            $this->clearCurrentLine($io);
-            $this->displayImageResult($io, $currentIndex, $totalCount, $imageReference, $result, $duration);
-
-            $results[] = $result;
-        }
-
-        return $results;
-    }
-
-    private function displayImageResult(
-        SymfonyStyle $io,
-        int $currentIndex,
-        int $totalCount,
-        string $imageReference,
-        ImageBackupResult $result,
-        float $duration
-    ): void {
-        // Format size info for successful backups
-        $sizeInfo = $result->isSuccessful() && $result->filePath
-            ? sprintf(' (%s)', $result->getFormattedFileSize())
-            : '';
-
-        // Main result line
-        $io->writeln(sprintf(
-            '[%d/%d] %s <info>%s</info>%s <comment>(%ss)</comment>',
-            $currentIndex,
-            $totalCount,
-            $result->getStatusIcon(),
-            $imageReference,
-            $sizeInfo,
-            $duration
-        ));
-
-        // Additional message for errors or skips
-        if ($result->message && !$result->isSuccessful()) {
-            $io->writeln(sprintf('      <comment>→ %s</comment>', $result->message));
-        }
-    }
-
-    private function displaySummary(SymfonyStyle $io, array $results): void
-    {
-        $successCount = count(array_filter($results, fn (ImageBackupResult $r) => $r->isSuccessful()));
-        $failedCount = count(array_filter($results, fn (ImageBackupResult $r) => $r->isFailed()));
-        $skippedCount = count(array_filter($results, fn (ImageBackupResult $r) => $r->isSkipped()));
-
-        $io->newLine();
-        $io->text([
-            sprintf('<info>✅ Successful:</info> %d', $successCount),
-            sprintf('<comment>⚠️ Skipped:</comment> %d', $skippedCount),
-            sprintf('<error>❌ Failed:</error> %d', $failedCount),
-        ]);
-
-        if ($failedCount > 0) {
-            $io->warning('Some backups failed.');
-        } elseif ($successCount > 0) {
-            $io->success('All backups completed successfully!');
-        }
-    }
-
-    private function clearCurrentLine(SymfonyStyle $io): void
-    {
-        $io->write("\r"); // Return to start of line
-        $io->write(str_repeat(' ', 100));   // Clear the line
-        $io->write("\r"); // Return to start again
-    }
-
     /**
      * @throws \Exception
      */
@@ -323,5 +213,74 @@ HELP
         }
 
         return $date->format('M j, Y');
+    }
+
+    protected function getOperationEmoji(): string
+    {
+        return '💾';
+    }
+
+    protected function getOperationVerb(): string
+    {
+        return 'Backing up';
+    }
+
+    protected function getAvailableResources(InputInterface $input): array
+    {
+        return $this->imageBackupService->getAvailableImages();
+    }
+
+    /**
+     * @param DockerImage $image
+     * @throws \Exception
+     */
+    protected function formatResourceForTable($image): array
+    {
+        $tags = empty($image->repoTags) ? ['<none>'] : $image->repoTags;
+
+        // Per ogni tag, crea una riga separata (come nel codice originale)
+        $rows = [];
+        foreach ($tags as $tag) {
+            $rows[] = [
+                $tag,
+                $image->getShortId(),
+                $image->getFormattedSize(),
+                $this->formatCreatedDate($image->created),
+            ];
+        }
+        return $rows;
+    }
+
+    protected function getTableHeaders(): array
+    {
+        return ['Repository:Tag', 'Image ID', 'Size', 'Created'];
+    }
+
+    protected function getListTitle(): string
+    {
+        return 'Available Docker Images';
+    }
+
+    protected function getNoResourcesMessage(InputInterface $input): string
+    {
+        return 'No Docker images found.';
+    }
+
+    protected function getResourceCountLabel(InputInterface $input): string
+    {
+        return 'images';
+    }
+
+    protected function getEmptyArgumentsErrorMessage(): string
+    {
+        return 'You must specify at least one image name or ID, or use --list to see available images.';
+    }
+
+    protected function getUsageExamples(): array
+    {
+        return [
+            'Usage: backup:images nginx:latest [mysql:8.0 ...]',
+            '   or: backup:images --list'
+        ];
     }
 }

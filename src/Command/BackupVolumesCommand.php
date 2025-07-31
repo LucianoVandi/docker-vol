@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace DockerBackup\Command;
 
 use DockerBackup\Service\VolumeBackupService;
-use DockerBackup\ValueObject\BackupResult;
+use DockerBackup\Trait\ArgumentValidationTrait;
+use DockerBackup\Trait\ListableResourceTrait;
+use DockerBackup\Trait\ProgressDisplayTrait;
+use DockerBackup\ValueObject\DockerVolume;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -15,6 +18,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 final class BackupVolumesCommand extends Command
 {
+    use ProgressDisplayTrait, ListableResourceTrait, ArgumentValidationTrait;
+
     public function __construct(
         private readonly VolumeBackupService $volumeBackupService
     ) {
@@ -79,18 +84,14 @@ HELP
 
         // Handle list option
         if ($input->getOption('list')) {
-            return $this->listAvailableVolumes($io);
+            return $this->handleListOption($io, $input);
         }
 
         $volumeNames = $input->getArgument('volumes');
         $compress = !$input->getOption('no-compression');
 
         // Check if volumes argument is provided
-        if (empty($volumeNames)) {
-            $io->error('You must specify at least one volume name, or use --list to see available volumes.');
-            $io->text('Usage: docker:backup:volumes volume1 [volume2 ...]');
-            $io->text('   or: docker:backup:volumes --list');
-
+        if (!$this->validateRequiredArguments($volumeNames, $io)) {
             return Command::FAILURE;
         }
 
@@ -114,7 +115,11 @@ HELP
         $io->writeln(sprintf('Starting backup of <info>%d</info> volume(s)...', count($volumeNames)));
         $io->newLine();
 
-        $results = $this->performBackupsWithProgress($volumeNames, $outputDir, $compress, $io);
+        $results = $this->performOperationsWithProgress(
+            $volumeNames,
+            $io,
+            fn($volumeName) => $this->volumeBackupService->backupSingleVolume($volumeName, $outputDir, $compress)
+        );
 
         $this->displaySummary($io, $results);
 
@@ -124,113 +129,63 @@ HELP
         return $failedCount > 0 ? Command::FAILURE : Command::SUCCESS;
     }
 
-    private function listAvailableVolumes(SymfonyStyle $io): int
+    protected function getOperationEmoji(): string
     {
-        $volumes = $this->volumeBackupService->getAvailableVolumes();
-
-        if (empty($volumes)) {
-            $io->warning('No Docker volumes found.');
-
-            return Command::SUCCESS;
-        }
-
-        $io->title('Available Docker Volumes');
-
-        $tableData = [];
-        foreach ($volumes as $volume) {
-            $tableData[] = [
-                $volume->name,
-                $volume->driver,
-                $volume->mountpoint ?: 'N/A',
-            ];
-        }
-
-        $io->table(['Name', 'Driver', 'Mount Point'], $tableData);
-        $io->text(sprintf('Total: <info>%d</info> volumes', count($volumes)));
-
-        return Command::SUCCESS;
+        return '📦';
     }
 
-    private function performBackupsWithProgress(array $volumeNames, string $outputDir, bool $compress, SymfonyStyle $io): array
+    protected function getOperationVerb(): string
     {
-        $results = [];
-        $totalCount = count($volumeNames);
-
-        foreach ($volumeNames as $index => $volumeName) {
-            $currentIndex = $index + 1;
-
-            // Show what we're doing
-            $io->write(sprintf('[%d/%d] 📦 Backing up <info>%s</info>... ', $currentIndex, $totalCount, $volumeName));
-
-            // Perform the backup with timing
-            $startTime = microtime(true);
-            $result = $this->volumeBackupService->backupSingleVolume($volumeName, $outputDir, $compress);
-            $duration = round(microtime(true) - $startTime, 2);
-
-            // Clear the line and show result
-            $this->clearCurrentLine($io);
-            $this->displayVolumeResult($io, $currentIndex, $totalCount, $volumeName, $result, $duration);
-
-            $results[] = $result;
-        }
-
-        return $results;
+        return 'Backing up';
     }
 
-    private function displayVolumeResult(
-        SymfonyStyle $io,
-        int $currentIndex,
-        int $totalCount,
-        string $volumeName,
-        BackupResult $result,
-        float $duration
-    ): void {
-        // Format size info for successful backups
-        $sizeInfo = $result->isSuccessful() && $result->filePath
-            ? sprintf(' (%s)', $result->getFormattedFileSize())
-            : '';
-
-        // Main result line
-        $io->writeln(sprintf(
-            '[%d/%d] %s <info>%s</info>%s <comment>(%ss)</comment>',
-            $currentIndex,
-            $totalCount,
-            $result->getStatusIcon(),
-            $volumeName,
-            $sizeInfo,
-            $duration
-        ));
-
-        // Additional message for errors or skips
-        if ($result->message && !$result->isSuccessful()) {
-            $io->writeln(sprintf('      <comment>→ %s</comment>', $result->message));
-        }
+    protected function getAvailableResources(InputInterface $input): array
+    {
+        return $this->volumeBackupService->getAvailableVolumes();
     }
 
-    private function displaySummary(SymfonyStyle $io, array $results): void
+    /**
+     * @param DockerVolume $volume
+     */
+    protected function formatResourceForTable($volume): array
     {
-        $successCount = count(array_filter($results, fn (BackupResult $r) => $r->isSuccessful()));
-        $failedCount = count(array_filter($results, fn (BackupResult $r) => $r->isFailed()));
-        $skippedCount = count(array_filter($results, fn (BackupResult $r) => $r->isSkipped()));
-
-        $io->newLine();
-        $io->text([
-            sprintf('<info>✅ Successful:</info> %d', $successCount),
-            sprintf('<comment>⚠️ Skipped:</comment> %d', $skippedCount),
-            sprintf('<error>❌ Failed:</error> %d', $failedCount),
-        ]);
-
-        if ($failedCount > 0) {
-            $io->warning('Some backups failed.');
-        } elseif ($successCount > 0) {
-            $io->success('All backups completed successfully!');
-        }
+        return [
+            $volume->name,
+            $volume->driver,
+            $volume->mountpoint ?: 'N/A',
+        ];
     }
 
-    private function clearCurrentLine(SymfonyStyle $io): void
+    protected function getTableHeaders(): array
     {
-        $io->write("\r"); // Return to start of line
-        $io->write(str_repeat(' ', 100));   // Clear the line
-        $io->write("\r"); // Return to start again
+        return ['Name', 'Driver', 'Mount Point'];
+    }
+
+    protected function getListTitle(): string
+    {
+        return 'Available Docker Volumes';
+    }
+
+    protected function getNoResourcesMessage(InputInterface $input): string
+    {
+        return 'No Docker volumes found.';
+    }
+
+    protected function getResourceCountLabel(InputInterface $input): string
+    {
+        return 'volumes';
+    }
+
+    protected function getEmptyArgumentsErrorMessage(): string
+    {
+        return 'You must specify at least one volume name, or use --list to see available volumes.';
+    }
+
+    protected function getUsageExamples(): array
+    {
+        return [
+            'Usage: backup:volumes volume1 [volume2 ...]',
+            '   or: backup:volumes --list'
+        ];
     }
 }
