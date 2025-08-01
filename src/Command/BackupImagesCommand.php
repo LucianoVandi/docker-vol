@@ -5,59 +5,47 @@ declare(strict_types=1);
 namespace DockerBackup\Command;
 
 use DockerBackup\Service\ImageBackupService;
-use DockerBackup\Trait\ArgumentValidationTrait;
-use DockerBackup\Trait\ListableResourceTrait;
-use DockerBackup\Trait\ProgressDisplayTrait;
 use DockerBackup\ValueObject\DockerImage;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-final class BackupImagesCommand extends Command
+final class BackupImagesCommand extends AbstractBackupCommand
 {
-    use ProgressDisplayTrait, ListableResourceTrait, ArgumentValidationTrait;
-
     public function __construct(
         private readonly ImageBackupService $imageBackupService
     ) {
         parent::__construct();
     }
 
-    protected function configure(): void
+    protected function getCommandName(): string
     {
-        $defaultDir = getcwd() . '/backups/images';
+        return 'backup:images';
+    }
 
-        $this->setName('backup:images')
-            ->setDescription('Backup Docker images to tar.gz archives')
-            ->addArgument(
-                'images',
-                InputArgument::IS_ARRAY,
-                'Names or IDs of images to backup (e.g., nginx:latest, sha256:abc123...)'
-            )
-            ->addOption(
-                'output-dir',
-                'o',
-                InputOption::VALUE_REQUIRED,
-                'Output directory for backup files',
-                $defaultDir
-            )
-            ->addOption(
-                'no-compression',
-                null,
-                InputOption::VALUE_NONE,
-                'Create uncompressed tar archives instead of gzip compressed'
-            )
-            ->addOption(
-                'list',
-                'l',
-                InputOption::VALUE_NONE,
-                'List available images and exit'
-            )
-            ->setHelp(
-                <<<'HELP'
+    protected function getCommandDescription(): string
+    {
+        return 'Backup Docker images to tar.gz archives';
+    }
+
+    protected function getArgumentName(): string
+    {
+        return 'images';
+    }
+
+    protected function getArgumentDescription(): string
+    {
+        return 'Names or IDs of images to backup (e.g., nginx:latest, sha256:abc123...)';
+    }
+
+    protected function getDefaultOutputDir(): string
+    {
+        return getcwd() . '/backups/images';
+    }
+
+    protected function getCommandHelp(): string
+    {
+        return <<<'HELP'
 The <info>%command.name%</info> command creates backups of Docker images.
 
 <info>Examples:</info>
@@ -79,34 +67,22 @@ The <info>%command.name%</info> command creates backups of Docker images.
 
 The command uses Docker's native save functionality to create portable image archives.
 Compressed archives (.tar.gz) are created by default for space efficiency.
-HELP
-            )
-        ;
+HELP;
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    protected function getOperationTitle(): string
     {
-        $io = new SymfonyStyle($input, $output);
+        return 'Docker Image Backup';
+    }
 
-        // Handle list option
-        if ($input->getOption('list')) {
-            return $this->handleListOption($io, $input);
-        }
+    protected function getResourceType(): string
+    {
+        return 'images';
+    }
 
-        $imageReferences = $input->getArgument('images');
-        $compress = !$input->getOption('no-compression');
-
-        // Check if images argument is provided
-        if (!$this->validateRequiredArguments($imageReferences, $io)) {
-            return Command::FAILURE;
-        }
-
-        $outputDir = $input->getOption('output-dir');
-
-        $io->title('Docker Image Backup');
-        $io->text("Backing up images to: <info>{$outputDir}</info>");
-
-        // Validate images exist
+    protected function validateResourcesExist(array $imageReferences, SymfonyStyle $io): int
+    {
+        // Get available images and extract all possible references
         $availableImages = $this->imageBackupService->getAvailableImages();
         $availableImageRefs = $this->extractImageReferences($availableImages);
 
@@ -122,22 +98,12 @@ HELP
             return Command::FAILURE;
         }
 
-        // Perform backups
-        $io->writeln(sprintf('Starting backup of <info>%d</info> image(s)...', count($imageReferences)));
-        $io->newLine();
+        return Command::SUCCESS;
+    }
 
-        $results = $this->performOperationsWithProgress(
-            $imageReferences,
-            $io,
-            fn($imageReference) => $this->imageBackupService->backupSingleImage($imageReference, $outputDir, $compress)
-        );
-
-        $this->displaySummary($io, $results);
-
-        // Return appropriate exit code
-        $failedCount = count(array_filter($results, fn ($r) => $r->isFailed()));
-
-        return $failedCount > 0 ? Command::FAILURE : Command::SUCCESS;
+    protected function performSingleBackup(string $imageReference, InputInterface $input, string $outputDir, bool $compress)
+    {
+        return $this->imageBackupService->backupSingleImage($imageReference, $outputDir, $compress);
     }
 
     private function extractImageReferences(array $images): array
@@ -174,7 +140,6 @@ HELP
                     foreach ($availableRefs as $availableRef) {
                         if (str_starts_with($availableRef, $imageRef)) {
                             $found = true;
-
                             break;
                         }
                     }
@@ -215,6 +180,7 @@ HELP
         return $date->format('M j, Y');
     }
 
+    // Trait implementations
     protected function getOperationEmoji(): string
     {
         return '💾';

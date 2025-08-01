@@ -6,59 +6,40 @@ namespace DockerBackup\Command;
 
 use DockerBackup\Helper\CommandHelper;
 use DockerBackup\Service\ImageRestoreService;
-use DockerBackup\Trait\ArgumentValidationTrait;
-use DockerBackup\Trait\DestructiveOperationTrait;
-use DockerBackup\Trait\ListableResourceTrait;
-use DockerBackup\Trait\ProgressDisplayTrait;
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-final class RestoreImagesCommand extends Command
+final class RestoreImagesCommand extends AbstractRestoreCommand
 {
-    use ProgressDisplayTrait, ListableResourceTrait, DestructiveOperationTrait, ArgumentValidationTrait;
-
     public function __construct(
         private readonly ImageRestoreService $imageRestoreService
     ) {
         parent::__construct();
     }
 
-    protected function configure(): void
+    protected function getCommandName(): string
     {
-        $defaultDir = getcwd() . '/backups/images';
+        return 'restore:images';
+    }
 
-        $this->setName('restore:images')
-            ->setDescription('Restore Docker images from tar.gz archives')
-            ->addArgument(
-                'archives',
-                InputArgument::IS_ARRAY,
-                'Backup archive files to restore (.tar or .tar.gz)'
-            )
-            ->addOption(
-                'backup-dir',
-                'b',
-                InputOption::VALUE_REQUIRED,
-                'Directory containing backup files',
-                $defaultDir
-            )
-            ->addOption(
-                'overwrite',
-                null,
-                InputOption::VALUE_NONE,
-                'Overwrite existing images with the same name'
-            )
-            ->addOption(
-                'list',
-                'l',
-                InputOption::VALUE_NONE,
-                'List available backup archives and exit'
-            )
-            ->setHelp(
-                <<<'HELP'
+    protected function getCommandDescription(): string
+    {
+        return 'Restore Docker images from tar.gz archives';
+    }
+
+    protected function getDefaultBackupDir(): string
+    {
+        return getcwd() . '/backups/images';
+    }
+
+    protected function getOverwriteOptionDescription(): string
+    {
+        return 'Overwrite existing images with the same name';
+    }
+
+    protected function getCommandHelp(): string
+    {
+        return <<<'HELP'
 The <info>%command.name%</info> command restores Docker images from backup archives.
 
 <info>Examples:</info>
@@ -78,91 +59,34 @@ The <info>%command.name%</info> command restores Docker images from backup archi
 The command uses Docker's native load functionality to restore images from archives.
 Both compressed (.tar.gz) and uncompressed (.tar) archives are supported.
 By default, existing images with the same name will not be overwritten.
-HELP
-            )
-        ;
+HELP;
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    protected function getOperationTitle(): string
     {
-        $io = new SymfonyStyle($input, $output);
+        return 'Docker Image Restore';
+    }
 
-        // Handle list option
-        if ($input->getOption('list')) {
-            return $this->handleListOption($io, $input);
-        }
+    protected function getResourceType(): string
+    {
+        return 'images';
+    }
 
-        $archiveNames = $input->getArgument('archives');
-        $backupDir = $input->getOption('backup-dir');
+    protected function displayAdditionalModeMessages(SymfonyStyle $io, InputInterface $input): void
+    {
         $overwrite = $input->getOption('overwrite');
 
-        // Check if archives argument is provided
-        if (!$this->validateRequiredArguments($archiveNames, $io)) {
-            return Command::FAILURE;
-        }
-
-        // Resolve full paths for archives
-        $archivePaths = CommandHelper::resolveArchivePaths($archiveNames, $backupDir);
-
-        // Validate all archives exist
-        $missingArchives = array_filter($archivePaths, fn ($path) => !file_exists($path));
-        if (!empty($missingArchives)) {
-            $io->error('The following archive files do not exist:');
-            foreach ($missingArchives as $missing) {
-                $io->text("  - {$missing}");
-            }
-
-            return Command::FAILURE;
-        }
-
-        // Validate archive integrity (quick check)
-        $io->text('🔍 Validating archives...');
-        $invalidArchives = CommandHelper::validateArchivesIntegrity($archivePaths);
-        if (!empty($invalidArchives)) {
-            $io->error('The following archives failed validation:');
-            foreach ($invalidArchives as $invalid => $reason) {
-                $io->text("  - {$invalid}: {$reason}");
-            }
-
-            return Command::FAILURE;
-        }
-
-        $io->text('<info>✅ All archives validated successfully</info>');
-        $io->newLine();
-
-        if (!$this->confirmDestructiveOperation($archivePaths, $overwrite, $io)) {
-            $io->text('Operation cancelled by user.');
-
-            return Command::SUCCESS;
-        }
-
-        $io->title('Docker Image Restore');
-        $io->text("Restoring images from: <info>{$backupDir}</info>");
-
-        if ($overwrite) {
-            $io->text('<comment>⚠️  Overwrite mode enabled - existing images will be replaced</comment>');
-        } else {
+        if (!$overwrite) {
             $io->text('<info>ℹ️  Existing images will be skipped (use --overwrite to replace them)</info>');
         }
-
-        // Perform restores
-        $io->writeln(sprintf('Starting restore of <info>%d</info> archive(s)...', count($archivePaths)));
-        $io->newLine();
-
-        $results = $this->performOperationsWithProgress(
-            $archivePaths,
-            $io,
-            fn($archivePath) => $this->imageRestoreService->restoreSingleImage($archivePath, $overwrite)
-        );
-
-        $this->displaySummary($io, $results);
-
-        // Return appropriate exit code
-        $failedCount = count(array_filter($results, fn ($r) => $r->isFailed()));
-
-        return $failedCount > 0 ? Command::FAILURE : Command::SUCCESS;
     }
 
+    protected function performSingleRestore(string $archivePath, InputInterface $input, bool $overwrite)
+    {
+        return $this->imageRestoreService->restoreSingleImage($archivePath, $overwrite);
+    }
+
+    // Trait implementations
     protected function getOperationEmoji(): string
     {
         return '📦';
@@ -243,5 +167,4 @@ HELP
             '   or: restore:images --list'
         ];
     }
-
 }
