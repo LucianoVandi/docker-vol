@@ -80,8 +80,10 @@ class DockerService implements DockerServiceInterface
             }
 
             return $images;
-        } catch (\Exception) {
-            return [];
+        } catch (DockerCommandException $e) {
+            throw new DockerCommandException(
+                'Failed to list images. Please ensure Docker 23+ is installed: ' . $e->getMessage()
+            );
         }
     }
 
@@ -200,7 +202,7 @@ class DockerService implements DockerServiceInterface
     private function executeCommand(array $command): Process
     {
         $process = new Process($command);
-        $process->setTimeout(300); // 5 minutes timeout
+        $process->setTimeout($this->getBackupTimeout());
 
         try {
             $process->mustRun();
@@ -213,5 +215,15 @@ class DockerService implements DockerServiceInterface
                 $exception
             );
         }
+    }
+
+    private function getBackupTimeout(): int
+    {
+        $timeout = getenv('BACKUP_TIMEOUT');
+        if ($timeout === false || !ctype_digit($timeout) || (int) $timeout <= 0) {
+            return 300;
+        }
+
+        return (int) $timeout;
     }
 }
