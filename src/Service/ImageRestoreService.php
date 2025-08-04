@@ -193,17 +193,39 @@ final readonly class ImageRestoreService
         // Remove file extensions
         $name = preg_replace('/\.(tar\.gz|tar)$/', '', $fileName);
 
-        // Convert underscores back to Docker image format
-        // nginx_latest -> nginx:latest
-        // docker_io_library_nginx_latest -> docker.io/library/nginx:latest
-        $name = str_replace('_', ':', $name);
-
-        // Handle registry prefixes (basic reconstruction)
-        if (str_contains($name, ':::')) {
-            $name = str_replace(':::', '/', $name);
+        if (!is_string($name) || $name === '') {
+            return 'unknown';
         }
 
-        return $name ?: 'unknown';
+        if (preg_match('/%[0-9A-Fa-f]{2}/', $name)) {
+            return rawurldecode($name);
+        }
+
+        return $this->extractLegacyImageName($name);
+    }
+
+    private function extractLegacyImageName(string $fileNameWithoutExtension): string
+    {
+        $parts = explode('_', $fileNameWithoutExtension);
+        if (count($parts) < 2) {
+            return $fileNameWithoutExtension;
+        }
+
+        $tag = array_pop($parts);
+
+        if (count($parts) >= 2 && in_array($parts[0], ['docker', 'ghcr', 'quay'], true)) {
+            $registry = array_shift($parts) . '.' . array_shift($parts);
+
+            return $registry . '/' . implode('/', $parts) . ':' . $tag;
+        }
+
+        if (str_contains($parts[0], '.')) {
+            $registry = array_shift($parts);
+
+            return $registry . '/' . implode('/', $parts) . ':' . $tag;
+        }
+
+        return implode('_', $parts) . ':' . $tag;
     }
 
     private function imageAlreadyExists(array $imageInfo): bool

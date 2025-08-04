@@ -181,16 +181,7 @@ final readonly class ImageBackupService
 
     private function sanitizeImageReference(string $imageReference): string
     {
-        // Replace unsafe characters for filenames
-        $sanitized = preg_replace('/[^a-zA-Z0-9._-]/', '_', $imageReference);
-
-        // Handle registry prefixes like docker.io/library/nginx:latest
-        $sanitized = str_replace(['/', ':'], '_', $sanitized);
-
-        // Remove consecutive underscores and trim
-        $sanitized = preg_replace('/_+/', '_', $sanitized);
-
-        return trim($sanitized, '_');
+        return rawurlencode($imageReference);
     }
 
     private function ensureBackupDirectoryExists(string $backupDirectory): void
