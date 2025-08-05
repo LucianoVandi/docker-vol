@@ -36,15 +36,18 @@ class VolumeBackupServiceTest extends TestCase
             ->expects($this->once())
             ->method('volumeExists')
             ->with($volumeName)
-            ->willReturn(true);
+            ->willReturn(true)
+        ;
 
         $this->dockerService
             ->expects($this->once())
             ->method('runContainer')
-            ->willReturnCallback(function() use ($expectedArchivePath) {
+            ->willReturnCallback(function () use ($expectedArchivePath) {
                 touch($expectedArchivePath);
+
                 return $this->createMockProcess(0, 'Backup completed');
-            });
+            })
+        ;
 
         $result = $this->backupService->backupSingleVolume($volumeName, $backupDir);
 
@@ -60,11 +63,13 @@ class VolumeBackupServiceTest extends TestCase
             ->expects($this->once())
             ->method('volumeExists')
             ->with($volumeName)
-            ->willReturn(false);
+            ->willReturn(false)
+        ;
 
         $this->dockerService
             ->expects($this->never())
-            ->method('runContainer');
+            ->method('runContainer')
+        ;
 
         $result = $this->backupService->backupSingleVolume($volumeName, $backupDir);
 
@@ -87,18 +92,21 @@ class VolumeBackupServiceTest extends TestCase
         $this->dockerService
             ->expects($this->exactly(2))
             ->method('volumeExists')
-            ->willReturn(true);
+            ->willReturn(true)
+        ;
 
         $callCount = 0;
         $this->dockerService
             ->expects($this->exactly(2))
             ->method('runContainer')
-            ->willReturnCallback(function() use ($backupDir, $volumeNames, &$callCount) {
+            ->willReturnCallback(function () use ($backupDir, $volumeNames, &$callCount) {
                 $archivePath = $backupDir . DIRECTORY_SEPARATOR . $volumeNames[$callCount] . '.tar.gz';
                 touch($archivePath);
                 $callCount++;
+
                 return $this->createMockProcess(0, 'Backup completed');
-            });
+            })
+        ;
 
         $results = $this->backupService->backupVolumes($volumeNames, $backupDir);
 
@@ -107,17 +115,51 @@ class VolumeBackupServiceTest extends TestCase
         $this->assertTrue($results[1]->isSuccessful());
     }
 
+    public function testBackupMultipleVolumesWithCompressionDisabled(): void
+    {
+        $backupDir = $this->createTempDirectory();
+        $volumeNames = ['volume1', 'volume2'];
+
+        $this->dockerService
+            ->expects($this->exactly(2))
+            ->method('volumeExists')
+            ->willReturn(true)
+        ;
+
+        $callCount = 0;
+        $this->dockerService
+            ->expects($this->exactly(2))
+            ->method('runContainer')
+            ->willReturnCallback(function () use ($backupDir, $volumeNames, &$callCount) {
+                $archivePath = $backupDir . DIRECTORY_SEPARATOR . $volumeNames[$callCount] . '.tar';
+                touch($archivePath);
+                $callCount++;
+
+                return $this->createMockProcess(0, 'Backup completed');
+            })
+        ;
+
+        $results = $this->backupService->backupVolumes($volumeNames, $backupDir, false);
+
+        $this->assertCount(2, $results);
+        $this->assertTrue($results[0]->isSuccessful());
+        $this->assertSame($backupDir . DIRECTORY_SEPARATOR . 'volume1.tar', $results[0]->filePath);
+        $this->assertTrue($results[1]->isSuccessful());
+        $this->assertSame($backupDir . DIRECTORY_SEPARATOR . 'volume2.tar', $results[1]->filePath);
+    }
+
     public function testGetAvailableVolumes(): void
     {
         $volumes = [
             $this->createTestVolume('vol1'),
-            $this->createTestVolume('vol2')
+            $this->createTestVolume('vol2'),
         ];
 
         $this->dockerService
             ->expects($this->once())
             ->method('listVolumes')
-            ->willReturn($volumes);
+            ->willReturn($volumes)
+        ;
 
         $result = $this->backupService->getAvailableVolumes();
 
@@ -139,14 +181,17 @@ class VolumeBackupServiceTest extends TestCase
 
         $this->dockerService
             ->method('volumeExists')
-            ->willReturn(true);
+            ->willReturn(true)
+        ;
 
         $this->dockerService
             ->method('runContainer')
-            ->willReturnCallback(function() use ($expectedArchivePath) {
+            ->willReturnCallback(function () use ($expectedArchivePath) {
                 touch($expectedArchivePath);
+
                 return $this->createMockProcess(0, 'Backup completed');
-            });
+            })
+        ;
 
         $result = $this->backupService->backupSingleVolume($volumeName, $backupDir, false);
 
@@ -160,12 +205,14 @@ class VolumeBackupServiceTest extends TestCase
 
         $this->dockerService
             ->method('volumeExists')
-            ->willReturn(true);
+            ->willReturn(true)
+        ;
 
         $failedProcess = $this->createMockProcess(1, '', 'Docker error');
         $this->dockerService
             ->method('runContainer')
-            ->willReturn($failedProcess);
+            ->willReturn($failedProcess)
+        ;
 
         $result = $this->backupService->backupSingleVolume($volumeName, $backupDir);
 

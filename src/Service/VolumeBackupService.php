@@ -30,14 +30,14 @@ final readonly class VolumeBackupService
      *
      * @return BackupResult[]
      */
-    public function backupVolumes(array $volumeNames, string $backupDirectory): array
+    public function backupVolumes(array $volumeNames, string $backupDirectory, bool $compress = true): array
     {
         $this->ensureBackupDirectoryExists($backupDirectory);
 
         $results = [];
 
         foreach ($volumeNames as $volumeName) {
-            $results[] = $this->backupSingleVolume($volumeName, $backupDirectory);
+            $results[] = $this->backupSingleVolume($volumeName, $backupDirectory, $compress);
         }
 
         return $results;
