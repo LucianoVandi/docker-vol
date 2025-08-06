@@ -25,6 +25,6 @@ $env = $input->getParameterOption(['--env', '-e'], $_ENV['APP_ENV'] ?? 'dev', tr
 $debug = $_ENV['APP_DEBUG'] ?? ($env !== 'prod');
 
 // Create the application (without Kernel!)
-$application = new Application('Docker Backup CLI', '1.0.0');
+$application = new Application();
 
 exit($application->run($input));
