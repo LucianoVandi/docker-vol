@@ -10,12 +10,12 @@ Download the latest release from [GitHub Releases](https://github.com/LucianoVan
 
 ```bash
 # Linux x64
-wget https://github.com/LucianoVandi/docker-backup-cli/docker-backup-cli/releases/latest/download/docker-backup-linux-x64-v1.0.0
+wget https://github.com/LucianoVandi/docker-backup-cli/releases/latest/download/docker-backup-linux-x64-v1.0.0
 chmod +x docker-backup-linux-x64-v1.0.0
 ./docker-backup-linux-x64-v1.0.0 --help
 
 # macOS x64
-wget https://github.com/LucianoVandi/docker-backup-cli/docker-backup-cli/releases/latest/download/docker-backup-macos-x64-v1.0.0
+wget https://github.com/LucianoVandi/docker-backup-cli/releases/latest/download/docker-backup-macos-x64-v1.0.0
 chmod +x docker-backup-macos-x64-v1.0.0
 ./docker-backup-macos-x64-v1.0.0 --help
 
@@ -27,7 +27,7 @@ chmod +x docker-backup-macos-x64-v1.0.0
 
 ```bash
 # Download .phar file
-wget https://github.com/LucianoVandi/docker-backup-cli/docker-backup-cli/releases/latest/download/docker-backup-v1.0.0.phar
+wget https://github.com/LucianoVandi/docker-backup-cli/releases/latest/download/docker-backup-v1.0.0.phar
 
 # Run with PHP
 php docker-backup-v1.0.0.phar --help
@@ -36,11 +36,11 @@ php docker-backup-v1.0.0.phar --help
 ## Requirements
 
 ### Docker
-- **Minimum supported version**: Docker 23.0+ (for optimal performance)ms
+- **Minimum supported version**: Docker 23.0+ (for optimal performance)
 
 ### System Requirements
 - **For standalone executables**: Docker installed and running
-- **For .phar file**: PHP 8.1+ + Docker CLI access
+- **For .phar file**: PHP 8.2+ + Docker CLI access
 - Access to Docker socket (`/var/run/docker.sock`)
 
 ## Usage
@@ -249,7 +249,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/LucianoVandi/docker-backup-cli/docker-backup-cli/issues)
+- **Issues**: [GitHub Issues](https://github.com/LucianoVandi/docker-backup-cli/issues)
 - **Documentation**: This README and command help (`--help`)
 
 ## Acknowledgments
