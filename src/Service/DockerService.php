@@ -116,9 +116,50 @@ class DockerService implements DockerServiceInterface
         return $this->executeCommand($command);
     }
 
+    public function createVolume(string $volumeName): Process
+    {
+        return $this->runDockerCommand(['volume', 'create', $volumeName]);
+    }
+
     public function saveImage(string $imageReference, string $outputPath): Process
     {
         return $this->runDockerCommand(['save', '-o', $outputPath, $imageReference]);
+    }
+
+    public function streamSavedImage(string $imageReference, callable $onChunk): Process
+    {
+        $process = $this->createDockerProcess(['save', $imageReference]);
+        $process->start();
+        $errorOutput = '';
+
+        try {
+            foreach ($process as $type => $chunk) {
+                if ($type === Process::ERR) {
+                    $errorOutput .= $chunk;
+
+                    continue;
+                }
+
+                if ($chunk === '') {
+                    continue;
+                }
+
+                $onChunk($chunk);
+            }
+        } catch (\Throwable $exception) {
+            $process->stop();
+
+            throw $exception;
+        }
+
+        if (!$process->isSuccessful()) {
+            throw new DockerCommandException(
+                sprintf('Docker command failed: %s', trim($errorOutput)),
+                $process->getExitCode() ?? 1
+            );
+        }
+
+        return $process;
     }
 
     public function loadImage(string $inputPath): Process
@@ -194,15 +235,22 @@ class DockerService implements DockerServiceInterface
 
     private function runDockerCommand(array $args): Process
     {
-        $command = array_merge([self::DOCKER_COMMAND], $args);
+        return $this->executeCommand($this->createDockerCommand($args));
+    }
 
-        return $this->executeCommand($command);
+    private function createDockerProcess(array $args): Process
+    {
+        return $this->createProcess($this->createDockerCommand($args));
+    }
+
+    private function createDockerCommand(array $args): array
+    {
+        return array_merge([self::DOCKER_COMMAND], $args);
     }
 
     private function executeCommand(array $command): Process
     {
-        $process = new Process($command);
-        $process->setTimeout($this->getBackupTimeout());
+        $process = $this->createProcess($command);
 
         try {
             $process->mustRun();
@@ -215,6 +263,14 @@ class DockerService implements DockerServiceInterface
                 $exception
             );
         }
+    }
+
+    private function createProcess(array $command): Process
+    {
+        $process = new Process($command);
+        $process->setTimeout($this->getBackupTimeout());
+
+        return $process;
     }
 
     private function getBackupTimeout(): int

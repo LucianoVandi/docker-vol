@@ -26,7 +26,11 @@ interface DockerServiceInterface
 
     public function runContainer(array $dockerArgs): Process;
 
+    public function createVolume(string $volumeName): Process;
+
     public function saveImage(string $imageReference, string $outputPath): Process;
+
+    public function streamSavedImage(string $imageReference, callable $onChunk): Process;
 
     public function loadImage(string $inputPath): Process;
 }
