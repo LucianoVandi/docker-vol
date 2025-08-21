@@ -108,64 +108,28 @@ final readonly class ImageBackupService
 
     private function performCompressedImageBackup(string $imageReference, string $archivePath): void
     {
-        // Create uncompressed tar first using docker save
-        $tempFile = tempnam(sys_get_temp_dir(), 'image_backup_');
-
-        try {
-            // Step 1: Use docker save to create uncompressed tar
-            $process = $this->dockerService->saveImage($imageReference, $tempFile);
-
-            if (!$process->isSuccessful()) {
-                throw new BackupException(
-                    'Failed to save image: ' . $process->getErrorOutput()
-                );
-            }
-
-            // Verify temp file was created and has content
-            if (!file_exists($tempFile) || filesize($tempFile) === 0) {
-                throw new BackupException('Docker save created empty or missing file');
-            }
-
-            // Step 2: Compress using PHP gzip functions
-            $this->compressWithPhpGzip($tempFile, $archivePath);
-        } finally {
-            // Clean up temporary file
-            if (file_exists($tempFile)) {
-                @unlink($tempFile);
-            }
-        }
-    }
-
-    private function compressWithPhpGzip(string $inputPath, string $outputPath): void
-    {
-        $inputHandle = fopen($inputPath, 'rb');
-        if (!$inputHandle) {
-            throw new BackupException('Failed to open temporary tar file for reading');
-        }
-
-        $outputHandle = gzopen($outputPath, 'wb9'); // wb9 = maximum compression level
+        $outputHandle = gzopen($archivePath, 'wb9');
         if (!$outputHandle) {
-            fclose($inputHandle);
-
             throw new BackupException('Failed to create compressed output file');
         }
 
-        try {
-            // Copy and compress in chunks to handle large files efficiently
-            while (!feof($inputHandle)) {
-                $chunk = fread($inputHandle, 8192); // 8KB chunks
-                if ($chunk === false) {
-                    throw new BackupException('Failed to read from temporary file');
-                }
+        $writtenBytes = 0;
 
+        try {
+            $this->dockerService->streamSavedImage($imageReference, function (string $chunk) use ($outputHandle, &$writtenBytes): void {
                 if (gzwrite($outputHandle, $chunk) === false) {
                     throw new BackupException('Failed to write compressed data');
                 }
+
+                $writtenBytes += strlen($chunk);
+            });
+
+            if ($writtenBytes === 0) {
+                throw new BackupException('Docker save produced no data');
             }
 
-            $this->logger->info('Successfully compressed image backup: ' . basename($outputPath));
+            $this->logger->info('Successfully compressed image backup: ' . basename($archivePath));
         } finally {
-            fclose($inputHandle);
             gzclose($outputHandle);
         }
     }
