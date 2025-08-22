@@ -153,12 +153,7 @@ final readonly class VolumeRestoreService
     {
         $this->logger->info("Creating volume: {$volumeName}");
 
-        $process = $this->dockerService->runContainer([
-            '--rm',
-            '-v', "{$volumeName}:/dummy",
-            'alpine',
-            'true',
-        ]);
+        $process = $this->dockerService->createVolume($volumeName);
 
         if (!$process->isSuccessful()) {
             throw new BackupException(
