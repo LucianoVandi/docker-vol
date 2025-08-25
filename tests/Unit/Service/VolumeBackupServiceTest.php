@@ -198,6 +198,42 @@ class VolumeBackupServiceTest extends TestCase
         $this->assertTrue($result->isSuccessful());
     }
 
+    public function testBackupMapsContainerPathFromConfiguredProjectDirectories(): void
+    {
+        $_ENV['DOCKER_BACKUP_DEV_MODE'] = '1';
+        $_ENV['CONTAINER_PROJECT_DIR'] = sys_get_temp_dir();
+        $_ENV['HOST_PROJECT_DIR'] = '/host/project';
+
+        $volumeName = 'test-volume';
+        $backupDir = $this->createTempDirectory();
+        $expectedArchivePath = $backupDir . DIRECTORY_SEPARATOR . $volumeName . '.tar.gz';
+        $expectedHostBackupDir = '/host/project' . substr($backupDir, strlen(sys_get_temp_dir()));
+
+        try {
+            $this->dockerService
+                ->method('volumeExists')
+                ->willReturn(true)
+            ;
+
+            $this->dockerService
+                ->expects($this->once())
+                ->method('runContainer')
+                ->with($this->callback(function (array $dockerArgs) use ($expectedArchivePath, $expectedHostBackupDir): bool {
+                    touch($expectedArchivePath);
+
+                    return in_array("{$expectedHostBackupDir}:/backup", $dockerArgs, true);
+                }))
+                ->willReturn($this->createMockProcess(0, 'Backup completed'))
+            ;
+
+            $result = $this->backupService->backupSingleVolume($volumeName, $backupDir);
+
+            $this->assertTrue($result->isSuccessful());
+        } finally {
+            unset($_ENV['DOCKER_BACKUP_DEV_MODE'], $_ENV['CONTAINER_PROJECT_DIR'], $_ENV['HOST_PROJECT_DIR']);
+        }
+    }
+
     public function testBackupFailsWhenDockerCommandFails(): void
     {
         $volumeName = 'test-volume';

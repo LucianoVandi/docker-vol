@@ -17,8 +17,11 @@ services:
     working_dir: /app
     environment:
       - COMPOSER_CACHE_DIR=/root/.composer
+      - DOCKER_BACKUP_DEV_MODE=1
       # Path of the project on the host for Docker-in-Docker volume mapping
       - HOST_PROJECT_DIR=${PWD}
+      # Path of the project inside this development container
+      - CONTAINER_PROJECT_DIR=/app
     # Keep container active for development
     tty: true
     stdin_open: true

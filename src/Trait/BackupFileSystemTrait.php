@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace DockerBackup\Trait;
 
+use DockerBackup\Helper\CommandHelper;
+
 trait BackupFileSystemTrait
 {
     /**
@@ -14,14 +16,29 @@ trait BackupFileSystemTrait
      */
     private function getHostPath(string $containerPath): string
     {
-        // Only if we're in Docker development mode
-        if (isset($_ENV['DOCKER_BACKUP_DEV_MODE'])) {
-            $hostProjectDir = $_ENV['HOST_PROJECT_DIR'] ?? getcwd();
-
-            return $hostProjectDir . substr($containerPath, 4);
+        if (!$this->envFlagEnabled('DOCKER_BACKUP_DEV_MODE')) {
+            return $containerPath;
         }
 
-        return $containerPath; // Standalone mode
+        $containerProjectDir = $this->getEnvValue('CONTAINER_PROJECT_DIR');
+        $hostProjectDir = $this->getEnvValue('HOST_PROJECT_DIR');
+
+        if ($containerProjectDir === null || $hostProjectDir === null) {
+            return $containerPath;
+        }
+
+        $containerProjectDir = rtrim($containerProjectDir, DIRECTORY_SEPARATOR);
+        $hostProjectDir = rtrim($hostProjectDir, DIRECTORY_SEPARATOR);
+
+        if ($containerPath === $containerProjectDir) {
+            return $hostProjectDir;
+        }
+
+        if (!str_starts_with($containerPath, $containerProjectDir . DIRECTORY_SEPARATOR)) {
+            return $containerPath;
+        }
+
+        return $hostProjectDir . substr($containerPath, strlen($containerProjectDir));
     }
 
     /**
@@ -71,20 +88,7 @@ trait BackupFileSystemTrait
      */
     private function formatFileSize(int $bytes): string
     {
-        if ($bytes === 0) {
-            return '0.00 B';
-        }
-
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        $size = $bytes;
-        $unitIndex = 0;
-
-        while ($size >= 1024 && $unitIndex < count($units) - 1) {
-            $size /= 1024;
-            $unitIndex++;
-        }
-
-        return sprintf('%.2f %s', $size, $units[$unitIndex]);
+        return CommandHelper::formatFileSize($bytes);
     }
 
     /**
@@ -106,5 +110,23 @@ trait BackupFileSystemTrait
     private function hasValidArchiveExtension(string $filePath): bool
     {
         return str_ends_with($filePath, '.tar') || str_ends_with($filePath, '.tar.gz');
+    }
+
+    private function envFlagEnabled(string $name): bool
+    {
+        $value = $this->getEnvValue($name);
+
+        return $value !== null && !in_array(strtolower($value), ['', '0', 'false', 'off', 'no'], true);
+    }
+
+    private function getEnvValue(string $name): ?string
+    {
+        $value = $_ENV[$name] ?? getenv($name);
+
+        if ($value === false || $value === '') {
+            return null;
+        }
+
+        return (string) $value;
     }
 }
