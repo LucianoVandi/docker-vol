@@ -16,7 +16,9 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 abstract class AbstractBackupCommand extends Command
 {
-    use ProgressDisplayTrait, ListableResourceTrait, ArgumentValidationTrait;
+    use ProgressDisplayTrait;
+    use ListableResourceTrait;
+    use ArgumentValidationTrait;
 
     protected function configure(): void
     {
@@ -46,7 +48,8 @@ abstract class AbstractBackupCommand extends Command
                 InputOption::VALUE_NONE,
                 'List available ' . $this->getResourceType() . ' and exit'
             )
-            ->setHelp($this->getCommandHelp());
+            ->setHelp($this->getCommandHelp())
+        ;
 
         // Allow subclasses to add additional options
         $this->configureAdditionalOptions();
@@ -88,7 +91,7 @@ abstract class AbstractBackupCommand extends Command
         $results = $this->performOperationsWithProgress(
             $resourceNames,
             $io,
-            fn($resourceName) => $this->performSingleBackup($resourceName, $input, $outputDir, $compress)
+            fn ($resourceName) => $this->performSingleBackup($resourceName, $input, $outputDir, $compress)
         );
 
         $this->displaySummary($io, $results);
@@ -100,7 +103,7 @@ abstract class AbstractBackupCommand extends Command
     }
 
     /**
-     * Display mode-specific messages (compression info, etc.)
+     * Display mode-specific messages (compression info, etc.).
      */
     protected function displayOperationModeMessages(SymfonyStyle $io, InputInterface $input, bool $compress): void
     {
@@ -113,14 +116,23 @@ abstract class AbstractBackupCommand extends Command
 
     // Template methods - must be implemented by subclasses
     abstract protected function getCommandName(): string;
+
     abstract protected function getCommandDescription(): string;
+
     abstract protected function getArgumentName(): string;
+
     abstract protected function getArgumentDescription(): string;
+
     abstract protected function getDefaultOutputDir(): string;
+
     abstract protected function getCommandHelp(): string;
+
     abstract protected function getOperationTitle(): string;
+
     abstract protected function getResourceType(): string;
+
     abstract protected function validateResourcesExist(array $resourceNames, SymfonyStyle $io): int;
+
     abstract protected function performSingleBackup(string $resourceName, InputInterface $input, string $outputDir, bool $compress);
 
     // Optional template methods - can be overridden by subclasses

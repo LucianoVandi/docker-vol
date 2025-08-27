@@ -18,6 +18,7 @@ trait ListableResourceTrait
 
         if (empty($resources)) {
             $io->warning($this->getNoResourcesMessage($input));
+
             return self::SUCCESS;
         }
 
@@ -54,6 +55,8 @@ trait ListableResourceTrait
     /**
      * Format a single resource for table display.
      * Must be implemented by the using class.
+     *
+     * @param mixed $resource
      */
     abstract protected function formatResourceForTable($resource): array;
 

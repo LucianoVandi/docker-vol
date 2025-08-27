@@ -100,6 +100,7 @@ HELP;
     protected function getAvailableResources(InputInterface $input): array
     {
         $backupDir = $input->getOption('backup-dir');
+
         return $this->imageRestoreService->getAvailableBackups($backupDir);
     }
 
@@ -126,12 +127,14 @@ HELP;
     protected function getNoResourcesMessage(InputInterface $input): string
     {
         $backupDir = $input->getOption('backup-dir');
+
         return "No backup archives found in: {$backupDir}";
     }
 
     protected function getResourceCountLabel(InputInterface $input): string
     {
         $backupDir = $input->getOption('backup-dir');
+
         return "backup archives in {$backupDir}";
     }
 
@@ -164,7 +167,7 @@ HELP;
     {
         return [
             'Usage: restore:images archive1.tar.gz [archive2.tar.gz ...]',
-            '   or: restore:images --list'
+            '   or: restore:images --list',
         ];
     }
 }

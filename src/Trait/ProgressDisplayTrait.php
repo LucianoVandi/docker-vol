@@ -12,9 +12,9 @@ trait ProgressDisplayTrait
     /**
      * Perform operations with progress display and timing.
      *
-     * @param array<string> $items - Array of items to process (volume names, image refs, archive paths)
-     * @param SymfonyStyle $io
-     * @param callable $operation - Function that takes (item, index) and returns AbstractResult
+     * @param array<string> $items     - Array of items to process (volume names, image refs, archive paths)
+     * @param callable      $operation - Function that takes (item, index) and returns AbstractResult
+     *
      * @return array<AbstractResult>
      */
     protected function performOperationsWithProgress(
@@ -49,14 +49,13 @@ trait ProgressDisplayTrait
     /**
      * Display the summary of operation results.
      *
-     * @param SymfonyStyle $io
      * @param array<AbstractResult> $results
      */
     protected function displaySummary(SymfonyStyle $io, array $results): void
     {
-        $successCount = count(array_filter($results, fn(AbstractResult $r) => $r->isSuccessful()));
-        $failedCount = count(array_filter($results, fn(AbstractResult $r) => $r->isFailed()));
-        $skippedCount = count(array_filter($results, fn(AbstractResult $r) => $r->isSkipped()));
+        $successCount = count(array_filter($results, fn (AbstractResult $r) => $r->isSuccessful()));
+        $failedCount = count(array_filter($results, fn (AbstractResult $r) => $r->isFailed()));
+        $skippedCount = count(array_filter($results, fn (AbstractResult $r) => $r->isSkipped()));
 
         $io->newLine();
         $io->text([
@@ -70,6 +69,24 @@ trait ProgressDisplayTrait
         } elseif ($successCount > 0) {
             $io->success('All operations completed successfully!');
         }
+    }
+
+    /**
+     * Get the emoji for the current operation type.
+     * Override in implementing classes for specific emojis.
+     */
+    protected function getOperationEmoji(): string
+    {
+        return '🔄'; // Default generic operation emoji
+    }
+
+    /**
+     * Get the verb for the current operation type.
+     * Override in implementing classes for specific verbs.
+     */
+    protected function getOperationVerb(): string
+    {
+        return 'Processing'; // Default generic verb
     }
 
     /**
@@ -134,23 +151,5 @@ trait ProgressDisplayTrait
         $io->write("\r"); // Return to start of line
         $io->write(str_repeat(' ', 100)); // Clear the line
         $io->write("\r"); // Return to start again
-    }
-
-    /**
-     * Get the emoji for the current operation type.
-     * Override in implementing classes for specific emojis.
-     */
-    protected function getOperationEmoji(): string
-    {
-        return '🔄'; // Default generic operation emoji
-    }
-
-    /**
-     * Get the verb for the current operation type.
-     * Override in implementing classes for specific verbs.
-     */
-    protected function getOperationVerb(): string
-    {
-        return 'Processing'; // Default generic verb
     }
 }

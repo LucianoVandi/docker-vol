@@ -18,7 +18,10 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 abstract class AbstractRestoreCommand extends Command
 {
-    use ProgressDisplayTrait, ListableResourceTrait, DestructiveOperationTrait, ArgumentValidationTrait;
+    use ProgressDisplayTrait;
+    use ListableResourceTrait;
+    use DestructiveOperationTrait;
+    use ArgumentValidationTrait;
 
     protected function configure(): void
     {
@@ -48,7 +51,8 @@ abstract class AbstractRestoreCommand extends Command
                 InputOption::VALUE_NONE,
                 'List available backup archives and exit'
             )
-            ->setHelp($this->getCommandHelp());
+            ->setHelp($this->getCommandHelp())
+        ;
 
         // Allow subclasses to add additional options
         $this->configureAdditionalOptions();
@@ -119,7 +123,7 @@ abstract class AbstractRestoreCommand extends Command
         $results = $this->performOperationsWithProgress(
             $archivePaths,
             $io,
-            fn($archivePath) => $this->performSingleRestore($archivePath, $input, $overwrite)
+            fn ($archivePath) => $this->performSingleRestore($archivePath, $input, $overwrite)
         );
 
         $this->displaySummary($io, $results);
@@ -131,7 +135,7 @@ abstract class AbstractRestoreCommand extends Command
     }
 
     /**
-     * Display mode-specific messages (overwrite warnings, etc.)
+     * Display mode-specific messages (overwrite warnings, etc.).
      */
     protected function displayOperationModeMessages(SymfonyStyle $io, InputInterface $input, bool $overwrite): void
     {
@@ -144,12 +148,19 @@ abstract class AbstractRestoreCommand extends Command
 
     // Template methods - must be implemented by subclasses
     abstract protected function getCommandName(): string;
+
     abstract protected function getCommandDescription(): string;
+
     abstract protected function getDefaultBackupDir(): string;
+
     abstract protected function getOverwriteOptionDescription(): string;
+
     abstract protected function getCommandHelp(): string;
+
     abstract protected function getOperationTitle(): string;
+
     abstract protected function getResourceType(): string;
+
     abstract protected function performSingleRestore(string $archivePath, InputInterface $input, bool $overwrite);
 
     // Optional template methods - can be overridden by subclasses

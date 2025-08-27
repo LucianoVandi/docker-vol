@@ -32,6 +32,7 @@ class CommandHelper
      * Handles both absolute and relative paths.
      *
      * @param array<string> $archiveNames
+     *
      * @return array<string>
      */
     public static function resolveArchivePaths(array $archiveNames, string $backupDir): array
@@ -55,6 +56,7 @@ class CommandHelper
      * Validate archive files integrity with basic checks.
      *
      * @param array<string> $archivePaths
+     *
      * @return array<string, string> Array of invalid archives with reasons
      */
     public static function validateArchivesIntegrity(array $archivePaths): array
@@ -68,18 +70,21 @@ class CommandHelper
                 // Quick format check first
                 if (!str_ends_with($archivePath, '.tar') && !str_ends_with($archivePath, '.tar.gz')) {
                     $invalidArchives[$archiveName] = 'Invalid file extension (expected .tar or .tar.gz)';
+
                     continue;
                 }
 
                 // Check file is readable
                 if (!is_readable($archivePath)) {
                     $invalidArchives[$archiveName] = 'File is not readable';
+
                     continue;
                 }
 
                 // Check basic file integrity
                 if (filesize($archivePath) === 0) {
                     $invalidArchives[$archiveName] = 'Archive file is empty';
+
                     continue;
                 }
 
@@ -96,11 +101,12 @@ class CommandHelper
      * Check if archives exist and return missing ones.
      *
      * @param array<string> $archivePaths
+     *
      * @return array<string>
      */
     public static function findMissingArchives(array $archivePaths): array
     {
-        return array_filter($archivePaths, fn($path) => !file_exists($path));
+        return array_filter($archivePaths, fn ($path) => !file_exists($path));
     }
 
     /**

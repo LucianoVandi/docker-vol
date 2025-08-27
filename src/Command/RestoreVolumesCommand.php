@@ -94,6 +94,7 @@ HELP;
     protected function performSingleRestore(string $archivePath, InputInterface $input, bool $overwrite)
     {
         $createVolumes = !$input->getOption('no-create-volume');
+
         return $this->volumeRestoreService->restoreSingleVolume($archivePath, $overwrite, $createVolumes);
     }
 
@@ -111,6 +112,7 @@ HELP;
     protected function getAvailableResources(InputInterface $input): array
     {
         $backupDir = $input->getOption('backup-dir');
+
         return $this->volumeRestoreService->getAvailableBackups($backupDir);
     }
 
@@ -137,13 +139,15 @@ HELP;
     protected function getNoResourcesMessage(InputInterface $input): string
     {
         $backupDir = $input->getOption('backup-dir');
-        return "No backup archives found in: $backupDir";
+
+        return "No backup archives found in: {$backupDir}";
     }
 
     protected function getResourceCountLabel(InputInterface $input): string
     {
         $backupDir = $input->getOption('backup-dir');
-        return "backup archives in $backupDir";
+
+        return "backup archives in {$backupDir}";
     }
 
     protected function getOverwriteWarningMessage(): string
@@ -175,7 +179,7 @@ HELP;
     {
         return [
             'Usage: restore:volumes archive1.tar.gz [archive2.tar.gz ...]',
-            '   or: restore:volumes --list'
+            '   or: restore:volumes --list',
         ];
     }
 }

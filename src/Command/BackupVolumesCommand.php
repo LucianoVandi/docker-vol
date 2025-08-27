@@ -82,6 +82,7 @@ HELP;
         $invalidVolumes = array_diff($volumeNames, $availableVolumeNames);
         if (!empty($invalidVolumes)) {
             $io->error('The following volumes do not exist: ' . implode(', ', $invalidVolumes));
+
             return Command::FAILURE;
         }
 
@@ -150,7 +151,7 @@ HELP;
     {
         return [
             'Usage: backup:volumes volume1 [volume2 ...]',
-            '   or: backup:volumes --list'
+            '   or: backup:volumes --list',
         ];
     }
 }

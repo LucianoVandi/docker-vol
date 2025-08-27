@@ -106,6 +106,78 @@ HELP;
         return $this->imageBackupService->backupSingleImage($imageReference, $outputDir, $compress);
     }
 
+    // Trait implementations
+    protected function getOperationEmoji(): string
+    {
+        return '💾';
+    }
+
+    protected function getOperationVerb(): string
+    {
+        return 'Backing up';
+    }
+
+    protected function getAvailableResources(InputInterface $input): array
+    {
+        return $this->imageBackupService->getAvailableImages();
+    }
+
+    /**
+     * @param DockerImage $image
+     *
+     * @throws \Exception
+     */
+    protected function formatResourceForTable($image): array
+    {
+        $tags = empty($image->repoTags) ? ['<none>'] : $image->repoTags;
+
+        // Per ogni tag, crea una riga separata (come nel codice originale)
+        $rows = [];
+        foreach ($tags as $tag) {
+            $rows[] = [
+                $tag,
+                $image->getShortId(),
+                $image->getFormattedSize(),
+                $this->formatCreatedDate($image->created),
+            ];
+        }
+
+        return $rows;
+    }
+
+    protected function getTableHeaders(): array
+    {
+        return ['Repository:Tag', 'Image ID', 'Size', 'Created'];
+    }
+
+    protected function getListTitle(): string
+    {
+        return 'Available Docker Images';
+    }
+
+    protected function getNoResourcesMessage(InputInterface $input): string
+    {
+        return 'No Docker images found.';
+    }
+
+    protected function getResourceCountLabel(InputInterface $input): string
+    {
+        return 'images';
+    }
+
+    protected function getEmptyArgumentsErrorMessage(): string
+    {
+        return 'You must specify at least one image name or ID, or use --list to see available images.';
+    }
+
+    protected function getUsageExamples(): array
+    {
+        return [
+            'Usage: backup:images nginx:latest [mysql:8.0 ...]',
+            '   or: backup:images --list',
+        ];
+    }
+
     private function extractImageReferences(array $images): array
     {
         $references = [];
@@ -140,6 +212,7 @@ HELP;
                     foreach ($availableRefs as $availableRef) {
                         if (str_starts_with($availableRef, $imageRef)) {
                             $found = true;
+
                             break;
                         }
                     }
@@ -178,75 +251,5 @@ HELP;
         }
 
         return $date->format('M j, Y');
-    }
-
-    // Trait implementations
-    protected function getOperationEmoji(): string
-    {
-        return '💾';
-    }
-
-    protected function getOperationVerb(): string
-    {
-        return 'Backing up';
-    }
-
-    protected function getAvailableResources(InputInterface $input): array
-    {
-        return $this->imageBackupService->getAvailableImages();
-    }
-
-    /**
-     * @param DockerImage $image
-     * @throws \Exception
-     */
-    protected function formatResourceForTable($image): array
-    {
-        $tags = empty($image->repoTags) ? ['<none>'] : $image->repoTags;
-
-        // Per ogni tag, crea una riga separata (come nel codice originale)
-        $rows = [];
-        foreach ($tags as $tag) {
-            $rows[] = [
-                $tag,
-                $image->getShortId(),
-                $image->getFormattedSize(),
-                $this->formatCreatedDate($image->created),
-            ];
-        }
-        return $rows;
-    }
-
-    protected function getTableHeaders(): array
-    {
-        return ['Repository:Tag', 'Image ID', 'Size', 'Created'];
-    }
-
-    protected function getListTitle(): string
-    {
-        return 'Available Docker Images';
-    }
-
-    protected function getNoResourcesMessage(InputInterface $input): string
-    {
-        return 'No Docker images found.';
-    }
-
-    protected function getResourceCountLabel(InputInterface $input): string
-    {
-        return 'images';
-    }
-
-    protected function getEmptyArgumentsErrorMessage(): string
-    {
-        return 'You must specify at least one image name or ID, or use --list to see available images.';
-    }
-
-    protected function getUsageExamples(): array
-    {
-        return [
-            'Usage: backup:images nginx:latest [mysql:8.0 ...]',
-            '   or: backup:images --list'
-        ];
     }
 }
