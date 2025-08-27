@@ -129,7 +129,7 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@26994186c0ac3ef5cae75ac16aa32e8153525f77
         with:
           tag_name: ${{ steps.version.outputs.VERSION }}
           name: Docker Backup CLI ${{ steps.version.outputs.VERSION }}
@@ -163,7 +163,7 @@ jobs:
             
             - Docker installed and running
             - For standalone executables: No additional requirements
-            - For .phar file: PHP 8.1+ with Docker CLI access
+            - For .phar file: PHP 8.2+ with Docker CLI access
             
             ---
             
