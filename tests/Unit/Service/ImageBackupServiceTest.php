@@ -51,6 +51,78 @@ class ImageBackupServiceTest extends TestCase
         $this->assertSame($expectedArchivePath, $result->filePath);
     }
 
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function imageReferencesProvider(): iterable
+    {
+        yield 'underscore' => ['my_org/my_app:release_2026'];
+        yield 'slash' => ['library/nginx:latest'];
+        yield 'registry prefix' => ['registry.example.com/team/nginx:1.25'];
+        yield 'tag' => ['postgres:16-alpine'];
+        yield 'supported special characters' => ['ghcr.io/acme/api-worker:test.build-42_rc1'];
+    }
+
+    /**
+     * @dataProvider imageReferencesProvider
+     */
+    public function testBackupFilenamesPreserveImageReferenceCharacters(string $imageReference): void
+    {
+        $backupDir = $this->createTempDirectory();
+        $expectedArchivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode($imageReference) . '.tar';
+
+        $this->dockerService
+            ->expects($this->once())
+            ->method('imageExists')
+            ->with($imageReference)
+            ->willReturn(true)
+        ;
+
+        $this->dockerService
+            ->expects($this->once())
+            ->method('saveImage')
+            ->with($imageReference, $expectedArchivePath)
+            ->willReturnCallback(function (string $imageReference, string $outputPath) {
+                touch($outputPath);
+
+                return $this->createMockProcess(0, 'Backup completed');
+            })
+        ;
+
+        $result = $this->backupService->backupSingleImage($imageReference, $backupDir, false);
+
+        $this->assertTrue($result->isSuccessful());
+        $this->assertSame($expectedArchivePath, $result->filePath);
+    }
+
+    public function testBackupSkipsWhenArchiveAlreadyExists(): void
+    {
+        $imageReference = 'nginx:latest';
+        $backupDir = $this->createTempDirectory();
+        touch($backupDir . DIRECTORY_SEPARATOR . rawurlencode($imageReference) . '.tar.gz');
+
+        $this->dockerService
+            ->expects($this->once())
+            ->method('imageExists')
+            ->with($imageReference)
+            ->willReturn(true)
+        ;
+
+        $this->dockerService
+            ->expects($this->never())
+            ->method('saveImage')
+        ;
+        $this->dockerService
+            ->expects($this->never())
+            ->method('streamSavedImage')
+        ;
+
+        $result = $this->backupService->backupSingleImage($imageReference, $backupDir);
+
+        $this->assertTrue($result->isSkipped());
+        $this->assertStringContainsString('File already exists', (string) $result->message);
+    }
+
     public function testCompressedBackupStreamsDockerSaveIntoGzipArchive(): void
     {
         $imageReference = 'nginx:latest';

@@ -10,14 +10,15 @@ use DockerBackup\Tests\TestCase;
 
 class ImageRestoreServiceTest extends TestCase
 {
+    private DockerServiceInterface $dockerService;
     private ImageRestoreService $restoreService;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $dockerService = $this->createMock(DockerServiceInterface::class);
-        $this->restoreService = new ImageRestoreService($dockerService);
+        $this->dockerService = $this->createMock(DockerServiceInterface::class);
+        $this->restoreService = new ImageRestoreService($this->dockerService);
     }
 
     public function testAvailableBackupsDecodeReversibleImageReferenceFilename(): void
@@ -42,5 +43,65 @@ class ImageRestoreServiceTest extends TestCase
 
         $this->assertCount(1, $backups);
         $this->assertSame('docker.io/library/nginx:latest', $backups[0]['name']);
+    }
+
+    public function testRestoreSkipsExistingImageWithUnderscoreInName(): void
+    {
+        $backupDir = $this->createTempDirectory();
+        $imageReference = 'registry.example.com/my_org/my_app:release_2026';
+        $archivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode($imageReference) . '.tar';
+        touch($archivePath);
+
+        $this->dockerService
+            ->expects($this->once())
+            ->method('runContainer')
+            ->willReturn($this->createMockProcess(0, "manifest.json\n"))
+        ;
+
+        $this->dockerService
+            ->expects($this->once())
+            ->method('imageExists')
+            ->with($imageReference)
+            ->willReturn(true)
+        ;
+
+        $this->dockerService
+            ->expects($this->never())
+            ->method('loadImage')
+        ;
+
+        $result = $this->restoreService->restoreSingleImage($archivePath);
+
+        $this->assertTrue($result->isSkipped());
+        $this->assertStringContainsString('Image already exists', (string) $result->message);
+    }
+
+    public function testRestoreUsesLegacyFilenameFallbackWhenCheckingExistingImage(): void
+    {
+        $backupDir = $this->createTempDirectory();
+        $archivePath = $backupDir . DIRECTORY_SEPARATOR . 'docker_io_library_nginx_latest.tar';
+        touch($archivePath);
+
+        $this->dockerService
+            ->expects($this->once())
+            ->method('runContainer')
+            ->willReturn($this->createMockProcess(0, "manifest.json\n"))
+        ;
+
+        $this->dockerService
+            ->expects($this->once())
+            ->method('imageExists')
+            ->with('docker.io/library/nginx:latest')
+            ->willReturn(true)
+        ;
+
+        $this->dockerService
+            ->expects($this->never())
+            ->method('loadImage')
+        ;
+
+        $result = $this->restoreService->restoreSingleImage($archivePath);
+
+        $this->assertTrue($result->isSkipped());
     }
 }

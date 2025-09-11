@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DockerBackup\Tests\Unit\Service;
 
+use DockerBackup\Exception\DockerCommandException;
 use DockerBackup\Service\DockerService;
 use DockerBackup\Tests\TestCase;
 
@@ -35,6 +36,41 @@ class DockerServiceTest extends TestCase
         putenv('BACKUP_TIMEOUT=invalid');
 
         $this->assertSame(300, $this->getBackupTimeout());
+    }
+
+    public function testListImagesRethrowsDockerErrors(): void
+    {
+        $binDir = $this->createTempDirectory();
+        $dockerPath = $binDir . DIRECTORY_SEPARATOR . 'docker';
+        file_put_contents($dockerPath, "#!/bin/sh\necho 'docker boom' >&2\nexit 12\n");
+        chmod($dockerPath, 0755);
+
+        $previousPath = getenv('PATH') ?: '';
+        $previousServerPath = $_SERVER['PATH'] ?? null;
+        $previousEnvPath = $_ENV['PATH'] ?? null;
+        $testPath = $binDir . PATH_SEPARATOR . $previousPath;
+        putenv('PATH=' . $testPath);
+        $_SERVER['PATH'] = $testPath;
+        $_ENV['PATH'] = $testPath;
+
+        try {
+            $this->expectException(DockerCommandException::class);
+            $this->expectExceptionMessage('Failed to list images');
+
+            (new DockerService())->listImages();
+        } finally {
+            putenv('PATH=' . $previousPath);
+            if ($previousServerPath === null) {
+                unset($_SERVER['PATH']);
+            } else {
+                $_SERVER['PATH'] = $previousServerPath;
+            }
+            if ($previousEnvPath === null) {
+                unset($_ENV['PATH']);
+            } else {
+                $_ENV['PATH'] = $previousEnvPath;
+            }
+        }
     }
 
     private function getBackupTimeout(): int
