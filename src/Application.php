@@ -18,12 +18,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 final class Application extends BaseApplication
 {
     private const APP_NAME = 'Docker Backup & Restore CLI Tool';
-    private const APP_VERSION = '1.0.0';
     private const APP_BANNER = '🐳 ' . self::APP_NAME;
 
     public function __construct()
     {
-        parent::__construct(self::APP_NAME, self::APP_VERSION);
+        parent::__construct(self::APP_NAME, self::readVersion());
 
         $this->registerCustomCommands();
     }
@@ -48,6 +47,16 @@ final class Application extends BaseApplication
             new HelpCommand(),
             new ListCommand(),
         ];
+    }
+
+    private static function readVersion(): string
+    {
+        $versionFile = dirname(__DIR__) . '/VERSION';
+        if (file_exists($versionFile)) {
+            return trim((string) file_get_contents($versionFile));
+        }
+
+        return 'dev';
     }
 
     private function registerCustomCommands(): void
