@@ -182,4 +182,9 @@ HELP;
             '   or: restore:volumes --list',
         ];
     }
+
+    protected function applyDockerTimeout(int $seconds): void
+    {
+        $this->volumeRestoreService->setDockerTimeout($seconds);
+    }
 }

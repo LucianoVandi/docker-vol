@@ -33,4 +33,6 @@ interface DockerServiceInterface
     public function streamSavedImage(string $imageReference, callable $onChunk): Process;
 
     public function loadImage(string $inputPath): Process;
+
+    public function setTimeoutOverride(?int $seconds): void;
 }

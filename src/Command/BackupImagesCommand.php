@@ -178,6 +178,11 @@ HELP;
         ];
     }
 
+    protected function applyDockerTimeout(int $seconds): void
+    {
+        $this->imageBackupService->setDockerTimeout($seconds);
+    }
+
     private function extractImageReferences(array $images): array
     {
         $references = [];

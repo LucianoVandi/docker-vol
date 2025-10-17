@@ -24,6 +24,11 @@ final readonly class ImageRestoreService
         $this->logger = $logger ?? new NullLogger();
     }
 
+    public function setDockerTimeout(?int $seconds): void
+    {
+        $this->dockerService->setTimeoutOverride($seconds);
+    }
+
     /**
      * @param string[] $archivePaths
      *

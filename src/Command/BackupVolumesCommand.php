@@ -154,4 +154,9 @@ HELP;
             '   or: backup:volumes --list',
         ];
     }
+
+    protected function applyDockerTimeout(int $seconds): void
+    {
+        $this->volumeBackupService->setDockerTimeout($seconds);
+    }
 }

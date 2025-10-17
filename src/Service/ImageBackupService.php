@@ -25,6 +25,11 @@ final readonly class ImageBackupService
         $this->logger = $logger ?? new NullLogger();
     }
 
+    public function setDockerTimeout(?int $seconds): void
+    {
+        $this->dockerService->setTimeoutOverride($seconds);
+    }
+
     /**
      * @param string[] $imageReferences
      *

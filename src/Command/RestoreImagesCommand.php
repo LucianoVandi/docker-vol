@@ -170,4 +170,9 @@ HELP;
             '   or: restore:images --list',
         ];
     }
+
+    protected function applyDockerTimeout(int $seconds): void
+    {
+        $this->imageRestoreService->setDockerTimeout($seconds);
+    }
 }

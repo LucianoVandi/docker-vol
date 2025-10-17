@@ -48,6 +48,12 @@ abstract class AbstractBackupCommand extends Command
                 InputOption::VALUE_NONE,
                 'List available ' . $this->getResourceType() . ' and exit'
             )
+            ->addOption(
+                'timeout',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Override Docker command timeout in seconds (default: BACKUP_TIMEOUT env or 300)'
+            )
             ->setHelp($this->getCommandHelp())
         ;
 
@@ -67,6 +73,11 @@ abstract class AbstractBackupCommand extends Command
         $resourceNames = $input->getArgument($this->getArgumentName());
         $outputDir = $input->getOption('output-dir');
         $compress = !$input->getOption('no-compression');
+
+        $timeoutOption = $input->getOption('timeout');
+        if ($timeoutOption !== null) {
+            $this->applyDockerTimeout((int) $timeoutOption);
+        }
 
         // Check if resources argument is provided
         if (!$this->validateRequiredArguments($resourceNames, $io)) {
@@ -139,6 +150,11 @@ abstract class AbstractBackupCommand extends Command
     protected function configureAdditionalOptions(): void
     {
         // Default: no additional options
+    }
+
+    protected function applyDockerTimeout(int $seconds): void
+    {
+        // Default: no-op; subclasses override to propagate to their service
     }
 
     protected function displayAdditionalModeMessages(SymfonyStyle $io, InputInterface $input): void

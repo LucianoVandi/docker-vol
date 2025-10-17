@@ -51,6 +51,12 @@ abstract class AbstractRestoreCommand extends Command
                 InputOption::VALUE_NONE,
                 'List available backup archives and exit'
             )
+            ->addOption(
+                'timeout',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Override Docker command timeout in seconds (default: BACKUP_TIMEOUT env or 300)'
+            )
             ->setHelp($this->getCommandHelp())
         ;
 
@@ -70,6 +76,11 @@ abstract class AbstractRestoreCommand extends Command
         $archiveNames = $input->getArgument('archives');
         $backupDir = $input->getOption('backup-dir');
         $overwrite = $input->getOption('overwrite');
+
+        $timeoutOption = $input->getOption('timeout');
+        if ($timeoutOption !== null) {
+            $this->applyDockerTimeout((int) $timeoutOption);
+        }
 
         // Check if archives argument is provided
         if (!$this->validateRequiredArguments($archiveNames, $io)) {
@@ -167,6 +178,11 @@ abstract class AbstractRestoreCommand extends Command
     protected function configureAdditionalOptions(): void
     {
         // Default: no additional options
+    }
+
+    protected function applyDockerTimeout(int $seconds): void
+    {
+        // Default: no-op; subclasses override to propagate to their service
     }
 
     protected function displayAdditionalModeMessages(SymfonyStyle $io, InputInterface $input): void

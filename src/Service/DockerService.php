@@ -15,6 +15,8 @@ class DockerService implements DockerServiceInterface
 {
     private const DOCKER_COMMAND = 'docker';
 
+    private ?int $timeoutOverride = null;
+
     /**
      * @return DockerVolume[]
      */
@@ -167,6 +169,11 @@ class DockerService implements DockerServiceInterface
         return $this->runDockerCommand(['load', '-i', $inputPath]);
     }
 
+    public function setTimeoutOverride(?int $seconds): void
+    {
+        $this->timeoutOverride = $seconds;
+    }
+
     private function parseSizeToBytes(string $sizeString): int
     {
         if (empty($sizeString) || $sizeString === 'N/A') {
@@ -275,6 +282,10 @@ class DockerService implements DockerServiceInterface
 
     private function getBackupTimeout(): int
     {
+        if ($this->timeoutOverride !== null && $this->timeoutOverride > 0) {
+            return $this->timeoutOverride;
+        }
+
         $timeout = getenv('BACKUP_TIMEOUT');
         if ($timeout === false || !ctype_digit($timeout) || (int) $timeout <= 0) {
             return 300;
