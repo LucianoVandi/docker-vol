@@ -116,6 +116,13 @@ jobs:
           echo "Final release assets:"
           ls -la release-assets/ || echo "No release assets found"
 
+      - name: Generate SHA256 checksums
+        run: |
+          cd release-assets
+          sha256sum * > SHA256SUMS.txt
+          echo "Generated checksums:"
+          cat SHA256SUMS.txt
+
       - name: Verify release assets
         run: |
           if [ -d "release-assets" ] && [ "$(ls -A release-assets)" ]; then
