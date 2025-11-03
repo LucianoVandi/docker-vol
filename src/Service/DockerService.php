@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\Service;
+namespace DockerVol\Service;
 
-use DockerBackup\Contract\DockerServiceInterface;
-use DockerBackup\Exception\DockerCommandException;
-use DockerBackup\ValueObject\DockerImage;
-use DockerBackup\ValueObject\DockerVolume;
+use DockerVol\Contract\DockerServiceInterface;
+use DockerVol\Exception\DockerCommandException;
+use DockerVol\ValueObject\DockerImage;
+use DockerVol\ValueObject\DockerVolume;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 

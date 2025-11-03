@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\Tests\Functional\Command;
+namespace DockerVol\Tests\Functional\Command;
 
-use DockerBackup\Command\BackupImagesCommand;
-use DockerBackup\Command\BackupVolumesCommand;
-use DockerBackup\Command\RestoreImagesCommand;
-use DockerBackup\Command\RestoreVolumesCommand;
-use DockerBackup\Contract\DockerServiceInterface;
-use DockerBackup\Service\ImageBackupService;
-use DockerBackup\Service\ImageRestoreService;
-use DockerBackup\Service\VolumeBackupService;
-use DockerBackup\Service\VolumeRestoreService;
-use DockerBackup\Tests\TestCase;
+use DockerVol\Command\BackupImagesCommand;
+use DockerVol\Command\BackupVolumesCommand;
+use DockerVol\Command\RestoreImagesCommand;
+use DockerVol\Command\RestoreVolumesCommand;
+use DockerVol\Contract\DockerServiceInterface;
+use DockerVol\Service\ImageBackupService;
+use DockerVol\Service\ImageRestoreService;
+use DockerVol\Service\VolumeBackupService;
+use DockerVol\Service\VolumeRestoreService;
+use DockerVol\Tests\TestCase;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 

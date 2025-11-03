@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\Service;
+namespace DockerVol\Service;
 
-use DockerBackup\Contract\DockerServiceInterface;
-use DockerBackup\Exception\RestoreException;
-use DockerBackup\Trait\BackupFileSystemTrait;
-use DockerBackup\ValueObject\ImageRestoreResult;
+use DockerVol\Contract\DockerServiceInterface;
+use DockerVol\Exception\RestoreException;
+use DockerVol\Trait\BackupFileSystemTrait;
+use DockerVol\ValueObject\ImageRestoreResult;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 

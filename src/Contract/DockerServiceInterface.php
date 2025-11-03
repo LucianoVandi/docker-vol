@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\Contract;
+namespace DockerVol\Contract;
 
-use DockerBackup\ValueObject\DockerImage;
-use DockerBackup\ValueObject\DockerVolume;
+use DockerVol\ValueObject\DockerImage;
+use DockerVol\ValueObject\DockerVolume;
 use Symfony\Component\Process\Process;
 
 interface DockerServiceInterface

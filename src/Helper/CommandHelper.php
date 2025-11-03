@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\Helper;
+namespace DockerVol\Helper;
 
 class CommandHelper
 {

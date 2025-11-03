@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup;
+namespace DockerVol;
 
-use DockerBackup\Service\DockerService;
-use DockerBackup\Service\ImageBackupService;
-use DockerBackup\Service\ImageRestoreService;
-use DockerBackup\Service\VolumeBackupService;
-use DockerBackup\Service\VolumeRestoreService;
+use DockerVol\Service\DockerService;
+use DockerVol\Service\ImageBackupService;
+use DockerVol\Service\ImageRestoreService;
+use DockerVol\Service\VolumeBackupService;
+use DockerVol\Service\VolumeRestoreService;
 use Symfony\Component\Console\Application as BaseApplication;
 use Symfony\Component\Console\Command\HelpCommand;
 use Symfony\Component\Console\Command\ListCommand;
@@ -17,8 +17,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 final class Application extends BaseApplication
 {
-    private const APP_NAME = 'Docker Backup & Restore CLI Tool';
-    private const APP_BANNER = '🐳 ' . self::APP_NAME;
+    private const APP_NAME = 'DockerVol';
+    private const APP_BANNER = '🐳 ' . self::APP_NAME . ' — Portable backup & restore for Docker volumes';
 
     public function __construct()
     {

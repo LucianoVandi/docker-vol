@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\Command;
+namespace DockerVol\Command;
 
-use DockerBackup\Helper\CommandHelper;
-use DockerBackup\Service\VolumeRestoreService;
+use DockerVol\Helper\CommandHelper;
+use DockerVol\Service\VolumeRestoreService;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Style\SymfonyStyle;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\ValueObject;
+namespace DockerVol\ValueObject;
 
 final readonly class ImageRestoreResult extends AbstractResult
 {

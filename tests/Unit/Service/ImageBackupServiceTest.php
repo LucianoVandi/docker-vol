@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\Tests\Unit\Service;
+namespace DockerVol\Tests\Unit\Service;
 
-use DockerBackup\Contract\DockerServiceInterface;
-use DockerBackup\Service\ImageBackupService;
-use DockerBackup\Tests\TestCase;
+use DockerVol\Contract\DockerServiceInterface;
+use DockerVol\Service\ImageBackupService;
+use DockerVol\Tests\TestCase;
 
 class ImageBackupServiceTest extends TestCase
 {

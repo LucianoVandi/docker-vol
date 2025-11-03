@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\Trait;
+namespace DockerVol\Trait;
 
-use DockerBackup\ValueObject\AbstractResult;
+use DockerVol\ValueObject\AbstractResult;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 trait ProgressDisplayTrait

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\Trait;
+namespace DockerVol\Trait;
 
-use DockerBackup\Helper\CommandHelper;
+use DockerVol\Helper\CommandHelper;
 
 trait BackupFileSystemTrait
 {

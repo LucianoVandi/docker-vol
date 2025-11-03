@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\ValueObject;
+namespace DockerVol\ValueObject;
 
-use DockerBackup\Enum\OperationStatus;
+use DockerVol\Enum\OperationStatus;
 
 abstract readonly class AbstractResult
 {

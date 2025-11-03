@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\Tests\Integration\Service;
+namespace DockerVol\Tests\Integration\Service;
 
-use DockerBackup\Exception\DockerCommandException;
-use DockerBackup\Service\DockerService;
-use DockerBackup\Tests\TestCase;
-use DockerBackup\ValueObject\DockerVolume;
-use DockerBackup\ValueObject\DockerImage;
+use DockerVol\Exception\DockerCommandException;
+use DockerVol\Service\DockerService;
+use DockerVol\Tests\TestCase;
+use DockerVol\ValueObject\DockerVolume;
+use DockerVol\ValueObject\DockerImage;
 use Symfony\Component\Process\Process;
 
 class DockerServiceTest extends TestCase

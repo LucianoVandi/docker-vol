@@ -3,7 +3,7 @@
 
 declare(strict_types=1);
 
-use DockerBackup\Application;
+use DockerVol\Application;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Dotenv\Dotenv;
 

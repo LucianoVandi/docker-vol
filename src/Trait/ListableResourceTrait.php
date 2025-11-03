@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\Trait;
+namespace DockerVol\Trait;
 
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;

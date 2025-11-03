@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\Enum;
+namespace DockerVol\Enum;
 
 enum OperationStatus: string
 {

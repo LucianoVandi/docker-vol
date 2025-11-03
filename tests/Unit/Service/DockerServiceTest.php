@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\Tests\Unit\Service;
+namespace DockerVol\Tests\Unit\Service;
 
-use DockerBackup\Exception\DockerCommandException;
-use DockerBackup\Service\DockerService;
-use DockerBackup\Tests\TestCase;
+use DockerVol\Exception\DockerCommandException;
+use DockerVol\Service\DockerService;
+use DockerVol\Tests\TestCase;
 
 class DockerServiceTest extends TestCase
 {

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\Tests\Unit\ValueObject;
+namespace DockerVol\Tests\Unit\ValueObject;
 
-use DockerBackup\Tests\TestCase;
-use DockerBackup\ValueObject\DockerImage;
+use DockerVol\Tests\TestCase;
+use DockerVol\ValueObject\DockerImage;
 
 class DockerImageTest extends TestCase
 {

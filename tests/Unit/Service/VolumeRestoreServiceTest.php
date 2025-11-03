@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\Tests\Unit\Service;
+namespace DockerVol\Tests\Unit\Service;
 
-use DockerBackup\Contract\DockerServiceInterface;
-use DockerBackup\Service\VolumeRestoreService;
-use DockerBackup\Tests\TestCase;
+use DockerVol\Contract\DockerServiceInterface;
+use DockerVol\Service\VolumeRestoreService;
+use DockerVol\Tests\TestCase;
 
 class VolumeRestoreServiceTest extends TestCase
 {

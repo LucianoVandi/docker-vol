@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\Tests;
+namespace DockerVol\Tests;
 
-use DockerBackup\ValueObject\DockerImage;
-use DockerBackup\ValueObject\DockerVolume;
+use DockerVol\ValueObject\DockerImage;
+use DockerVol\ValueObject\DockerVolume;
 use PHPUnit\Framework\TestCase as PHPUnitTestCase;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;

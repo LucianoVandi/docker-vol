@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace DockerBackup\Command;
+namespace DockerVol\Command;
 
-use DockerBackup\Trait\ArgumentValidationTrait;
-use DockerBackup\Trait\ListableResourceTrait;
-use DockerBackup\Trait\ProgressDisplayTrait;
+use DockerVol\Trait\ArgumentValidationTrait;
+use DockerVol\Trait\ListableResourceTrait;
+use DockerVol\Trait\ProgressDisplayTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
