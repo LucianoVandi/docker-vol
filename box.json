@@ -1,5 +1,5 @@
 {
-    "alias": "docker-backup.phar",
+    "alias": "dkvol.phar",
     "chmod": "0755",
     "directories": [
         "src"
@@ -17,7 +17,7 @@
         }
     ],
     "main": "bin/console",
-    "output": "docker-backup.phar",
+    "output": "dkvol.phar",
     "shebang": "#!/usr/bin/env php",
     "compression": "GZ",
     "git": null

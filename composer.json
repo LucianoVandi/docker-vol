@@ -1,6 +1,6 @@
 {
-    "name": "dockerbackup/cli",
-    "description": "Docker Backup & Restore CLI Tool",
+    "name": "dockervol/dkvol",
+    "description": "DockerVol — Portable backup & restore for Docker volumes",
     "type": "project",
     "license": "MIT",
     "require": {
@@ -18,12 +18,12 @@
     },
     "autoload": {
         "psr-4": {
-            "DockerBackup\\": "src/"
+            "DockerVol\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "DockerBackup\\Tests\\": "tests/"
+            "DockerVol\\Tests\\": "tests/"
         }
     },
     "bin": [
