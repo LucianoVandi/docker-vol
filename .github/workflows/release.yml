@@ -52,13 +52,13 @@ jobs:
           echo "Creating .phar file with Box..."
           box compile
           
-          echo "✅ File created: docker-backup.phar"
-          
+          echo "✅ File created: dkvol.phar"
+
           # Generate standalone executables
           if command -v phpacker >/dev/null 2>&1; then
             echo "Generating standalone executables..."
             echo "Building for all platforms..."
-            phpacker build all --src=docker-backup.phar --dest=build/ || echo "⚠️  All platforms build failed"
+            phpacker build all --src=dkvol.phar --dest=build/ || echo "⚠️  All platforms build failed"
             echo "✅ Building standalone executables completed!"
           else
             echo "⚠️  PHPacker not available, skipping standalone executables"
@@ -67,7 +67,7 @@ jobs:
       - name: List generated files (debug)
         run: |
           echo "Generated files structure:"
-          ls -la docker-backup.phar || echo "No .phar file found"
+          ls -la dkvol.phar || echo "No .phar file found"
           echo "Build directory structure:"
           find build -type f 2>/dev/null || echo "No build directory or files found"
 
@@ -77,8 +77,8 @@ jobs:
           mkdir -p release-assets
           
           # Copy .phar file
-          if [ -f "docker-backup.phar" ]; then
-            cp docker-backup.phar release-assets/docker-backup-${{ steps.version.outputs.VERSION }}.phar
+          if [ -f "dkvol.phar" ]; then
+            cp dkvol.phar release-assets/dkvol-${{ steps.version.outputs.VERSION }}.phar
             echo "✅ Copied .phar file"
           else
             echo "⚠️  .phar file not found"
@@ -96,7 +96,7 @@ jobs:
               local ext="$4"
           
               if [ -f "$src_file" ]; then
-                local dest_name="docker-backup-${platform}-${arch}-${{ steps.version.outputs.VERSION }}${ext}"
+                local dest_name="dkvol-${platform}-${arch}-${{ steps.version.outputs.VERSION }}${ext}"
                 cp "$src_file" "release-assets/${dest_name}"
                 echo "✅ Copied: ${dest_name}"
               else
@@ -139,31 +139,31 @@ jobs:
         uses: softprops/action-gh-release@26994186c0ac3ef5cae75ac16aa32e8153525f77
         with:
           tag_name: ${{ steps.version.outputs.VERSION }}
-          name: Docker Backup CLI ${{ steps.version.outputs.VERSION }}
+          name: DockerVol ${{ steps.version.outputs.VERSION }}
           body: |
-            ## Docker Backup & Restore CLI ${{ steps.version.outputs.VERSION }}
-            
+            ## DockerVol ${{ steps.version.outputs.VERSION }}
+
             ### Downloads
-            
+
             **Recommended**: Download the appropriate standalone executable for your system:
-            - **Linux x64**: `docker-backup-linux-x64-${{ steps.version.outputs.VERSION }}`
-            - **Linux ARM64**: `docker-backup-linux-arm64-${{ steps.version.outputs.VERSION }}`
-            - **macOS x64**: `docker-backup-macos-x64-${{ steps.version.outputs.VERSION }}`  
-            - **macOS ARM64**: `docker-backup-macos-arm64-${{ steps.version.outputs.VERSION }}`
-            - **Windows x64**: `docker-backup-windows-x64-${{ steps.version.outputs.VERSION }}.exe`
-            
-            **Alternative**: Download the `.phar` file and run with `php docker-backup-${{ steps.version.outputs.VERSION }}.phar`
-            
+            - **Linux x64**: `dkvol-linux-x64-${{ steps.version.outputs.VERSION }}`
+            - **Linux ARM64**: `dkvol-linux-arm64-${{ steps.version.outputs.VERSION }}`
+            - **macOS x64**: `dkvol-macos-x64-${{ steps.version.outputs.VERSION }}`
+            - **macOS ARM64**: `dkvol-macos-arm64-${{ steps.version.outputs.VERSION }}`
+            - **Windows x64**: `dkvol-windows-x64-${{ steps.version.outputs.VERSION }}.exe`
+
+            **Alternative**: Download the `.phar` file and run with `php dkvol-${{ steps.version.outputs.VERSION }}.phar`
+
             ### Usage
-            
+
             ```bash
             # Make executable (Linux/macOS)
-            chmod +x docker-backup-*
-            
+            chmod +x dkvol-*
+
             # Run commands
-            ./docker-backup-* backup:volumes --list
-            ./docker-backup-* backup:images nginx:latest
-            ./docker-backup-* restore:volumes volume1.tar.gz
+            ./dkvol backup:volumes --list
+            ./dkvol backup:images nginx:latest
+            ./dkvol restore:volumes volume1.tar.gz
             ```
             
             ### Requirements
@@ -183,4 +183,4 @@ jobs:
       - name: Cleanup
         run: |
           # Remove build artifacts
-          rm -rf build release-assets docker-backup.phar
+          rm -rf build release-assets dkvol.phar
