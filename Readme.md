@@ -1,4 +1,4 @@
-# Docker Backup & Restore CLI Tool
+# DockerVol — Portable backup & restore for Docker volumes
 
 A command-line utility for backing up and restoring Docker resources (volumes and images).
 
@@ -10,33 +10,33 @@ Download the latest release from [GitHub Releases](https://github.com/LucianoVan
 
 ```bash
 # Linux x64
-wget https://github.com/LucianoVandi/docker-backup-cli/releases/latest/download/docker-backup-linux-x64-v1.0.0
-chmod +x docker-backup-linux-x64-v1.0.0
-./docker-backup-linux-x64-v1.0.0 --help
+wget https://github.com/LucianoVandi/docker-backup-cli/releases/latest/download/dkvol-linux-x64-v1.0.0
+chmod +x dkvol-linux-x64-v1.0.0
+./dkvol-linux-x64-v1.0.0 --help
 
 # macOS x64
-wget https://github.com/LucianoVandi/docker-backup-cli/releases/latest/download/docker-backup-macos-x64-v1.0.0
-chmod +x docker-backup-macos-x64-v1.0.0
-./docker-backup-macos-x64-v1.0.0 --help
+wget https://github.com/LucianoVandi/docker-backup-cli/releases/latest/download/dkvol-macos-x64-v1.0.0
+chmod +x dkvol-macos-x64-v1.0.0
+./dkvol-macos-x64-v1.0.0 --help
 
 # Windows x64
-# Download docker-backup-windows-x64-v1.0.0.exe and run directly
+# Download dkvol-windows-x64-v1.0.0.exe and run directly
 ```
 
 ### Alternative: Using .phar
 
 ```bash
 # Download .phar file
-wget https://github.com/LucianoVandi/docker-backup-cli/releases/latest/download/docker-backup-v1.0.0.phar
+wget https://github.com/LucianoVandi/docker-backup-cli/releases/latest/download/dkvol-v1.0.0.phar
 
 # Run with PHP
-php docker-backup-v1.0.0.phar --help
+php dkvol-v1.0.0.phar --help
 ```
 
 ## Requirements
 
 ### Docker
-- **Minimum supported version**: Docker 23.0+ (for optimal performance)
+- **Minimum supported version**: Docker 23.0+
 
 ### System Requirements
 - **For standalone executables**: Docker installed and running
@@ -49,64 +49,64 @@ php docker-backup-v1.0.0.phar --help
 
 ```bash
 # List available volumes
-./docker-backup backup:volumes --list
+./dkvol backup:volumes --list
 
 # Backup specific volumes
-./docker-backup backup:volumes volume1 volume2
+./dkvol backup:volumes volume1 volume2
 
 # Backup with custom output directory
-./docker-backup backup:volumes volume1 --output-dir ./my-backups
+./dkvol backup:volumes volume1 --output-dir ./my-backups
 
 # Create uncompressed backups
-./docker-backup backup:volumes volume1 --no-compression
+./dkvol backup:volumes volume1 --no-compression
 
 # Restore volumes
-./docker-backup restore:volumes volume1.tar.gz
+./dkvol restore:volumes volume1.tar.gz
 
 # Restore with overwrite existing volumes
-./docker-backup restore:volumes volume1.tar.gz --overwrite
+./dkvol restore:volumes volume1.tar.gz --overwrite
 
 # List available volume backups
-./docker-backup restore:volumes --list
+./dkvol restore:volumes --list
 ```
 
 ### Image Operations
 
 ```bash
 # List available images
-./docker-backup backup:images --list
+./dkvol backup:images --list
 
 # Backup specific images
-./docker-backup backup:images nginx:latest mysql:8.0
+./dkvol backup:images nginx:latest mysql:8.0
 
 # Backup image by ID
-./docker-backup backup:images sha256:1234567890abcdef
+./dkvol backup:images sha256:1234567890abcdef
 
 # Backup with custom output directory
-./docker-backup backup:images nginx:latest --output-dir ./my-backups
+./dkvol backup:images nginx:latest --output-dir ./my-backups
 
 # Create uncompressed backups
-./docker-backup backup:images nginx:latest --no-compression
+./dkvol backup:images nginx:latest --no-compression
 
 # Restore images
-./docker-backup restore:images nginx_latest.tar.gz
+./dkvol restore:images nginx_latest.tar.gz
 
 # Restore with overwrite existing images
-./docker-backup restore:images nginx_latest.tar.gz --overwrite
+./dkvol restore:images nginx_latest.tar.gz --overwrite
 
 # List available image backups
-./docker-backup restore:images --list
+./dkvol restore:images --list
 ```
 
 ### Global Options
 
 ```bash
 # Get help for any command
-./docker-backup backup:volumes --help
-./docker-backup restore:images --help
+./dkvol backup:volumes --help
+./dkvol restore:images --help
 
 # Show version information
-./docker-backup --version
+./dkvol --version
 ```
 
 ## Development Setup
@@ -169,7 +169,7 @@ make build-standalone   # Create standalone executables
 
 - **Commands**: CLI interface using Symfony Console
 - **Services**: Business logic for backup/restore operations
-- **Docker Integration**: Native Docker API integration
+- **Docker Integration**: Native Docker CLI integration
 - **File System**: Efficient handling of large archives
 - **Cross-Platform**: Standalone executables for all major platforms
 
@@ -200,11 +200,11 @@ make build-standalone
 ```
 
 Generated files:
-- `docker-backup.phar` - Portable PHP archive
-- `build/docker-backup-linux-x64` - Linux executable
-- `build/docker-backup-windows-x64.exe` - Windows executable
-- `build/docker-backup-macos-x64` - macOS Intel executable
-- `build/docker-backup-macos-arm64` - macOS Apple Silicon executable
+- `dkvol.phar` - Portable PHP archive
+- `build/dkvol-linux-x64` - Linux executable
+- `build/dkvol-windows-x64.exe` - Windows executable
+- `build/dkvol-macos-x64` - macOS Intel executable
+- `build/dkvol-macos-arm64` - macOS Apple Silicon executable
 
 ### Release Process
 
