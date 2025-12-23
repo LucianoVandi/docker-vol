@@ -1,5 +1,7 @@
 # DockerVol — Portable backup & restore for Docker volumes
 
+[![codecov](https://codecov.io/gh/LucianoVandi/docker-backup-cli/branch/main/graph/badge.svg)](https://codecov.io/gh/LucianoVandi/docker-backup-cli)
+
 A command-line utility for backing up and restoring Docker resources (volumes and images).
 
 ## Quick Start
