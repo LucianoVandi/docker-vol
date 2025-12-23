@@ -234,7 +234,7 @@ final readonly class VolumeRestoreService
                 $output = trim($process->getOutput());
                 $parts = explode("\t", $output);
 
-                return (int) ($parts[0] ?? 0);
+                return (int) $parts[0];
             }
         } catch (\Throwable) {
             // Size calculation failed, not critical
