@@ -7,3 +7,4 @@ vendor
 .php-cs-fixer.cache
 .phpunit.cache
 tests-junit.xml
+coverage*

@@ -19,15 +19,20 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /
     && apt-get install -y docker-ce-cli \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Install extension installer
+COPY --from=ghcr.io/mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 
-# Install PHP zip extension (required by PHPacker)
-RUN docker-php-ext-install zip
+# Install PHP extensions
+RUN install-php-extensions zip pcov
 
 # Configure PHP
 RUN echo "memory_limit=512M" > /usr/local/etc/php/conf.d/memory-limit.ini \
-    && echo "phar.readonly=0" > /usr/local/etc/php/conf.d/phar.ini
+    && echo "phar.readonly=0" > /usr/local/etc/php/conf.d/phar.ini \
+    && echo "pcov.enabled=1" > /usr/local/etc/php/conf.d/pcov.ini \
+    && echo "pcov.directory=/app" >> /usr/local/etc/php/conf.d/pcov.ini
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Install Box (for creating .phar)
 RUN curl -L https://github.com/box-project/box/releases/latest/download/box.phar -o /usr/local/bin/box \
