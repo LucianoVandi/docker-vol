@@ -266,7 +266,7 @@ class DockerService implements DockerServiceInterface
         } catch (ProcessFailedException $exception) {
             throw new DockerCommandException(
                 sprintf('Docker command failed: %s', $exception->getMessage()),
-                $exception->getCode(),
+                $exception->getProcess()->getExitCode() ?? 1,
                 $exception
             );
         }

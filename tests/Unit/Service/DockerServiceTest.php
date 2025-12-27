@@ -73,6 +73,25 @@ class DockerServiceTest extends TestCase
         }
     }
 
+    public function testExecuteCommandPreservesProcessExitCode(): void
+    {
+        $binDir = $this->createTempDirectory();
+        $commandPath = $binDir . DIRECTORY_SEPARATOR . 'failing-command';
+        file_put_contents($commandPath, "#!/bin/sh\necho 'command failed' >&2\nexit 12\n");
+        chmod($commandPath, 0755);
+
+        $service = new DockerService();
+        $method = new \ReflectionMethod(DockerService::class, 'executeCommand');
+        $method->setAccessible(true);
+
+        try {
+            $method->invoke($service, [$commandPath]);
+            $this->fail('Expected DockerCommandException was not thrown.');
+        } catch (DockerCommandException $exception) {
+            $this->assertSame(12, $exception->getCode());
+        }
+    }
+
     private function getBackupTimeout(): int
     {
         $service = new DockerService();
