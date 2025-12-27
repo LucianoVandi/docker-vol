@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace DockerVol\Service;
 
 use DockerVol\Contract\DockerServiceInterface;
-use DockerVol\Exception\BackupException;
+use DockerVol\Exception\RestoreException;
 use DockerVol\Trait\BackupFileSystemTrait;
 use DockerVol\ValueObject\RestoreResult;
 use Psr\Log\LoggerInterface;
@@ -54,11 +54,11 @@ final readonly class VolumeRestoreService
             // Verify archive file exists
             $fileCheck = $this->checkFileAccess($archivePath);
             if (!$fileCheck['exists']) {
-                throw new BackupException("Archive file not found: {$archivePath}");
+                throw new RestoreException("Archive file not found: {$archivePath}");
             }
 
             if (!$fileCheck['readable']) {
-                throw new BackupException("Archive file is not readable: {$archivePath}");
+                throw new RestoreException("Archive file is not readable: {$archivePath}");
             }
 
             $this->validateArchive($archivePath);
@@ -80,7 +80,7 @@ final readonly class VolumeRestoreService
                 $this->createVolume($volumeName);
             // @phpstan-ignore-next-line
             } elseif (!$volumeExists && !$createVolume) {
-                throw new BackupException("Volume '{$volumeName}' does not exist and --no-create-volume was specified");
+                throw new RestoreException("Volume '{$volumeName}' does not exist and --no-create-volume was specified");
             }
 
             // If volume exists and overwrite is true, we need to clean it first
@@ -151,7 +151,7 @@ final readonly class VolumeRestoreService
             return substr($filename, 0, -4);
         }
 
-        throw new BackupException("Invalid archive file format: {$filename}. Expected .tar or .tar.gz");
+        throw new RestoreException("Invalid archive file format: {$filename}. Expected .tar or .tar.gz");
     }
 
     private function createVolume(string $volumeName): void
@@ -161,7 +161,7 @@ final readonly class VolumeRestoreService
         $process = $this->dockerService->createVolume($volumeName);
 
         if (!$process->isSuccessful()) {
-            throw new BackupException(
+            throw new RestoreException(
                 "Failed to create volume '{$volumeName}': " . $process->getErrorOutput()
             );
         }
@@ -179,7 +179,7 @@ final readonly class VolumeRestoreService
         ]);
 
         if (!$process->isSuccessful()) {
-            throw new BackupException(
+            throw new RestoreException(
                 "Failed to clean volume '{$volumeName}': " . $process->getErrorOutput()
             );
         }
@@ -211,7 +211,7 @@ final readonly class VolumeRestoreService
         $process = $this->dockerService->runContainer($dockerArgs);
 
         if (!$process->isSuccessful()) {
-            throw new BackupException(
+            throw new RestoreException(
                 'Failed to extract backup archive: ' . $process->getErrorOutput()
             );
         }
@@ -249,7 +249,7 @@ final readonly class VolumeRestoreService
 
         // Validate file extension
         if (!$this->hasValidArchiveExtension($archivePath)) {
-            throw new BackupException(
+            throw new RestoreException(
                 'Invalid archive format: ' . basename($archivePath)
                 . '. Expected .tar or .tar.gz extension'
             );
@@ -274,7 +274,7 @@ final readonly class VolumeRestoreService
             ]);
 
             if (!$process->isSuccessful()) {
-                throw new BackupException(
+                throw new RestoreException(
                     'Archive integrity check failed: ' . trim($process->getErrorOutput())
                 );
             }
@@ -282,16 +282,16 @@ final readonly class VolumeRestoreService
             // Check if archive has content
             $output = trim($process->getOutput());
             if (empty($output)) {
-                throw new BackupException("Archive appears to be empty: {$archiveFilename}");
+                throw new RestoreException("Archive appears to be empty: {$archiveFilename}");
             }
 
             // Log successful validation
             $fileCount = count(explode("\n", $output));
             $this->logger->info("Archive validation successful: {$fileCount} files found");
-        } catch (BackupException $e) {
+        } catch (RestoreException $e) {
             throw $e;
         } catch (\Throwable $e) {
-            throw new BackupException(
+            throw new RestoreException(
                 "Failed to validate archive {$archiveFilename}: " . $e->getMessage()
             );
         }

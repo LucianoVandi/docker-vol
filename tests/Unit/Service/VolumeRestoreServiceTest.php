@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DockerVol\Tests\Unit\Service;
 
 use DockerVol\Contract\DockerServiceInterface;
+use DockerVol\Exception\RestoreException;
 use DockerVol\Service\VolumeRestoreService;
 use DockerVol\Tests\TestCase;
 
@@ -152,5 +153,17 @@ class VolumeRestoreServiceTest extends TestCase
 
         $this->assertTrue($result->isFailed());
         $this->assertStringContainsString('--no-create-volume', (string) $result->message);
+    }
+
+    public function testValidateArchiveThrowsRestoreExceptionForInvalidArchiveExtension(): void
+    {
+        $archivePath = $this->createTempFile('not an archive', '.txt');
+        $method = new \ReflectionMethod(VolumeRestoreService::class, 'validateArchive');
+        $method->setAccessible(true);
+
+        $this->expectException(RestoreException::class);
+        $this->expectExceptionMessage('Invalid archive format');
+
+        $method->invoke($this->restoreService, $archivePath);
     }
 }
