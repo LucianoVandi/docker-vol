@@ -5,7 +5,8 @@
         "src"
     ],
     "files": [
-        "bin/console"
+        "bin/console",
+        "VERSION"
     ],
     "finder": [
         {
