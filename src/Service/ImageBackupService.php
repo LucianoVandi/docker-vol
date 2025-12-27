@@ -35,14 +35,14 @@ final readonly class ImageBackupService
      *
      * @return ImageBackupResult[]
      */
-    public function backupImages(array $imageReferences, string $backupDirectory): array
+    public function backupImages(array $imageReferences, string $backupDirectory, bool $compress = true): array
     {
         $this->ensureBackupDirectoryExists($backupDirectory);
 
         $results = [];
 
         foreach ($imageReferences as $imageReference) {
-            $results[] = $this->backupSingleImage($imageReference, $backupDirectory);
+            $results[] = $this->backupSingleImage($imageReference, $backupDirectory, $compress);
         }
 
         return $results;

@@ -158,4 +158,40 @@ class ImageBackupServiceTest extends TestCase
         $this->assertSame($expectedArchivePath, $result->filePath);
         $this->assertSame('tar-content', gzdecode((string) file_get_contents($expectedArchivePath)));
     }
+
+    public function testBackupImagesPropagatesCompressionOption(): void
+    {
+        $imageReference = 'nginx:latest';
+        $backupDir = $this->createTempDirectory();
+        $expectedArchivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode($imageReference) . '.tar';
+
+        $this->dockerService
+            ->expects($this->once())
+            ->method('imageExists')
+            ->with($imageReference)
+            ->willReturn(true)
+        ;
+
+        $this->dockerService
+            ->expects($this->once())
+            ->method('saveImage')
+            ->with($imageReference, $expectedArchivePath)
+            ->willReturnCallback(function (string $imageReference, string $outputPath) {
+                touch($outputPath);
+
+                return $this->createMockProcess(0, 'Backup completed');
+            })
+        ;
+
+        $this->dockerService
+            ->expects($this->never())
+            ->method('streamSavedImage')
+        ;
+
+        $results = $this->backupService->backupImages([$imageReference], $backupDir, false);
+
+        $this->assertCount(1, $results);
+        $this->assertTrue($results[0]->isSuccessful());
+        $this->assertSame($expectedArchivePath, $results[0]->filePath);
+    }
 }
