@@ -6,6 +6,7 @@ namespace DockerVol\Service;
 
 use DockerVol\Contract\DockerServiceInterface;
 use DockerVol\Exception\RestoreException;
+use DockerVol\Helper\ArchiveValidator;
 use DockerVol\Trait\BackupFileSystemTrait;
 use DockerVol\ValueObject\RestoreResult;
 use Psr\Log\LoggerInterface;
@@ -34,19 +35,27 @@ final readonly class VolumeRestoreService
      *
      * @return RestoreResult[]
      */
-    public function restoreVolumes(array $archivePaths, bool $overwrite = false, bool $createVolumes = true): array
-    {
+    public function restoreVolumes(
+        array $archivePaths,
+        bool $overwrite = false,
+        bool $createVolumes = true,
+        bool $deepValidate = false
+    ): array {
         $results = [];
 
         foreach ($archivePaths as $archivePath) {
-            $results[] = $this->restoreSingleVolume($archivePath, $overwrite, $createVolumes);
+            $results[] = $this->restoreSingleVolume($archivePath, $overwrite, $createVolumes, $deepValidate);
         }
 
         return $results;
     }
 
-    public function restoreSingleVolume(string $archivePath, bool $overwrite = false, bool $createVolume = true): RestoreResult
-    {
+    public function restoreSingleVolume(
+        string $archivePath,
+        bool $overwrite = false,
+        bool $createVolume = true,
+        bool $deepValidate = false
+    ): RestoreResult {
         $volumeName = $this->extractVolumeNameFromPath($archivePath);
         $this->logger->info("Starting restore of volume: {$volumeName} from {$archivePath}");
 
@@ -61,7 +70,7 @@ final readonly class VolumeRestoreService
                 throw new RestoreException("Archive file is not readable: {$archivePath}");
             }
 
-            $this->validateArchive($archivePath);
+            $this->validateArchive($archivePath, $deepValidate);
 
             // Check if volume already exists
             $volumeExists = $this->dockerService->volumeExists($volumeName);
@@ -243,18 +252,28 @@ final readonly class VolumeRestoreService
         return null;
     }
 
-    private function validateArchive(string $archivePath): void
+    private function validateArchive(string $archivePath, bool $deepValidate = false): void
     {
         $this->logger->info("Validating archive: {$archivePath}");
 
-        // Validate file extension
-        if (!$this->hasValidArchiveExtension($archivePath)) {
+        $failureReason = ArchiveValidator::validateLightweight($archivePath);
+        if ($failureReason !== null) {
             throw new RestoreException(
-                'Invalid archive format: ' . basename($archivePath)
-                . '. Expected .tar or .tar.gz extension'
+                'Invalid archive format: ' . basename($archivePath) . ". {$failureReason}"
             );
         }
 
+        if (!$deepValidate) {
+            $this->logger->info('Archive lightweight validation successful');
+
+            return;
+        }
+
+        $this->validateArchiveDeep($archivePath);
+    }
+
+    private function validateArchiveDeep(string $archivePath): void
+    {
         $backupDir = dirname($archivePath);
         $archiveFilename = basename($archivePath);
         $hostBackupDir = $this->getHostPath($backupDir);
@@ -266,6 +285,18 @@ final readonly class VolumeRestoreService
             : ['tar', 'tf', "/backup/{$archiveFilename}"];
 
         try {
+            $hostTarResult = ArchiveValidator::listContentsWithHostTar($archivePath);
+            if ($hostTarResult['available']) {
+                $this->validateArchiveListResult(
+                    $archiveFilename,
+                    $hostTarResult['successful'],
+                    $hostTarResult['output'],
+                    $hostTarResult['error']
+                );
+
+                return;
+            }
+
             $process = $this->dockerService->runContainer([
                 '--rm',
                 '-v', "{$hostBackupDir}:/backup:ro",
@@ -273,21 +304,12 @@ final readonly class VolumeRestoreService
                 ...$testCommand,
             ]);
 
-            if (!$process->isSuccessful()) {
-                throw new RestoreException(
-                    'Archive integrity check failed: ' . trim($process->getErrorOutput())
-                );
-            }
-
-            // Check if archive has content
-            $output = trim($process->getOutput());
-            if (empty($output)) {
-                throw new RestoreException("Archive appears to be empty: {$archiveFilename}");
-            }
-
-            // Log successful validation
-            $fileCount = count(explode("\n", $output));
-            $this->logger->info("Archive validation successful: {$fileCount} files found");
+            $this->validateArchiveListResult(
+                $archiveFilename,
+                $process->isSuccessful(),
+                $process->getOutput(),
+                $process->getErrorOutput()
+            );
         } catch (RestoreException $e) {
             throw $e;
         } catch (\Throwable $e) {
@@ -295,6 +317,27 @@ final readonly class VolumeRestoreService
                 "Failed to validate archive {$archiveFilename}: " . $e->getMessage()
             );
         }
+    }
+
+    private function validateArchiveListResult(
+        string $archiveFilename,
+        bool $successful,
+        string $output,
+        string $errorOutput
+    ): void {
+        if (!$successful) {
+            throw new RestoreException(
+                'Archive integrity check failed: ' . trim($errorOutput)
+            );
+        }
+
+        $output = trim($output);
+        if (empty($output)) {
+            throw new RestoreException("Archive appears to be empty: {$archiveFilename}");
+        }
+
+        $fileCount = count(explode("\n", $output));
+        $this->logger->info("Archive validation successful: {$fileCount} files found");
     }
 
     private function formatBytes(int $bytes): string

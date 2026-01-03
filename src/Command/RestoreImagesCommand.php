@@ -83,7 +83,11 @@ HELP;
 
     protected function performSingleRestore(string $archivePath, InputInterface $input, bool $overwrite)
     {
-        return $this->imageRestoreService->restoreSingleImage($archivePath, $overwrite);
+        return $this->imageRestoreService->restoreSingleImage(
+            $archivePath,
+            $overwrite,
+            (bool) $input->getOption('deep-validate')
+        );
     }
 
     // Trait implementations

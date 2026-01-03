@@ -24,7 +24,7 @@ class VolumeRestoreServiceTest extends TestCase
 
     public function testRestoreCreatesMissingVolumeThroughDockerService(): void
     {
-        $archivePath = $this->createTempFile('backup content', '.tar.gz');
+        $archivePath = $this->createTempTarArchive('.tar.gz');
         $volumeName = basename($archivePath, '.tar.gz');
 
         $this->dockerService
@@ -42,10 +42,9 @@ class VolumeRestoreServiceTest extends TestCase
         ;
 
         $this->dockerService
-            ->expects($this->exactly(3))
+            ->expects($this->exactly(2))
             ->method('runContainer')
             ->willReturnOnConsecutiveCalls(
-                $this->createMockProcess(0, "file.txt\n"),
                 $this->createMockProcess(0, 'Restore completed'),
                 $this->createMockProcess(0, "12\t/volume\n")
             )
@@ -58,7 +57,7 @@ class VolumeRestoreServiceTest extends TestCase
 
     public function testRestoreSkipsExistingVolumeWithoutOverwrite(): void
     {
-        $archivePath = $this->createTempFile('backup content', '.tar.gz');
+        $archivePath = $this->createTempTarArchive('.tar.gz');
         $volumeName = basename($archivePath, '.tar.gz');
 
         $this->dockerService
@@ -74,9 +73,8 @@ class VolumeRestoreServiceTest extends TestCase
         ;
 
         $this->dockerService
-            ->expects($this->once())
+            ->expects($this->never())
             ->method('runContainer')
-            ->willReturn($this->createMockProcess(0, "file.txt\n"))
         ;
 
         $result = $this->restoreService->restoreSingleVolume($archivePath);
@@ -87,7 +85,7 @@ class VolumeRestoreServiceTest extends TestCase
 
     public function testRestoreOverwritesExistingVolumeAfterCleaningIt(): void
     {
-        $archivePath = $this->createTempFile('backup content', '.tar.gz');
+        $archivePath = $this->createTempTarArchive('.tar.gz');
         $volumeName = basename($archivePath, '.tar.gz');
 
         $this->dockerService
@@ -104,18 +102,17 @@ class VolumeRestoreServiceTest extends TestCase
 
         $callCount = 0;
         $this->dockerService
-            ->expects($this->exactly(4))
+            ->expects($this->exactly(3))
             ->method('runContainer')
             ->willReturnCallback(function (array $dockerArgs) use (&$callCount) {
                 $callCount++;
 
-                if ($callCount === 2) {
+                if ($callCount === 1) {
                     $this->assertContains('rm -rf /volume/* /volume/.[!.]* /volume/..?*', $dockerArgs);
                 }
 
                 return match ($callCount) {
-                    1 => $this->createMockProcess(0, "file.txt\n"),
-                    4 => $this->createMockProcess(0, "12\t/volume\n"),
+                    3 => $this->createMockProcess(0, "12\t/volume\n"),
                     default => $this->createMockProcess(0, 'ok'),
                 };
             })
@@ -128,7 +125,7 @@ class VolumeRestoreServiceTest extends TestCase
 
     public function testRestoreFailsWhenVolumeIsMissingAndCreationIsDisabled(): void
     {
-        $archivePath = $this->createTempFile('backup content', '.tar.gz');
+        $archivePath = $this->createTempTarArchive('.tar.gz');
         $volumeName = basename($archivePath, '.tar.gz');
 
         $this->dockerService
@@ -144,9 +141,8 @@ class VolumeRestoreServiceTest extends TestCase
         ;
 
         $this->dockerService
-            ->expects($this->once())
+            ->expects($this->never())
             ->method('runContainer')
-            ->willReturn($this->createMockProcess(0, "file.txt\n"))
         ;
 
         $result = $this->restoreService->restoreSingleVolume($archivePath, false, false);

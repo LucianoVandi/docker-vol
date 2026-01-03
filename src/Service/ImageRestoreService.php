@@ -6,6 +6,7 @@ namespace DockerVol\Service;
 
 use DockerVol\Contract\DockerServiceInterface;
 use DockerVol\Exception\RestoreException;
+use DockerVol\Helper\ArchiveValidator;
 use DockerVol\Trait\BackupFileSystemTrait;
 use DockerVol\ValueObject\ImageRestoreResult;
 use Psr\Log\LoggerInterface;
@@ -34,19 +35,22 @@ final readonly class ImageRestoreService
      *
      * @return ImageRestoreResult[]
      */
-    public function restoreImages(array $archivePaths, bool $overwrite = false): array
+    public function restoreImages(array $archivePaths, bool $overwrite = false, bool $deepValidate = false): array
     {
         $results = [];
 
         foreach ($archivePaths as $archivePath) {
-            $results[] = $this->restoreSingleImage($archivePath, $overwrite);
+            $results[] = $this->restoreSingleImage($archivePath, $overwrite, $deepValidate);
         }
 
         return $results;
     }
 
-    public function restoreSingleImage(string $archivePath, bool $overwrite = false): ImageRestoreResult
-    {
+    public function restoreSingleImage(
+        string $archivePath,
+        bool $overwrite = false,
+        bool $deepValidate = false
+    ): ImageRestoreResult {
         $archiveName = basename($archivePath);
         $this->logger->info("Starting restore of image from: {$archiveName}");
 
@@ -63,7 +67,7 @@ final readonly class ImageRestoreService
             }
 
             // Validate archive format
-            $this->validateArchive($archivePath);
+            $this->validateArchive($archivePath, $deepValidate);
 
             // Extract image information from archive without loading it
             $imageInfo = $this->extractImageInfoFromArchive($archivePath);
@@ -130,18 +134,28 @@ final readonly class ImageRestoreService
         return $backups;
     }
 
-    private function validateArchive(string $archivePath): void
+    private function validateArchive(string $archivePath, bool $deepValidate = false): void
     {
         $this->logger->info("Validating archive: {$archivePath}");
 
-        // Validate file extension
-        if (!$this->hasValidArchiveExtension($archivePath)) {
+        $failureReason = ArchiveValidator::validateLightweight($archivePath);
+        if ($failureReason !== null) {
             throw new RestoreException(
-                'Invalid archive format: ' . basename($archivePath)
-                . '. Expected .tar or .tar.gz extension'
+                'Invalid archive format: ' . basename($archivePath) . ". {$failureReason}"
             );
         }
 
+        if (!$deepValidate) {
+            $this->logger->info('Archive lightweight validation successful');
+
+            return;
+        }
+
+        $this->validateArchiveDeep($archivePath);
+    }
+
+    private function validateArchiveDeep(string $archivePath): void
+    {
         $backupDir = dirname($archivePath);
         $archiveFilename = basename($archivePath);
         $hostBackupDir = $this->getHostPath($backupDir);
@@ -153,6 +167,18 @@ final readonly class ImageRestoreService
             : ['tar', 'tf', "/backup/{$archiveFilename}"];
 
         try {
+            $hostTarResult = ArchiveValidator::listContentsWithHostTar($archivePath);
+            if ($hostTarResult['available']) {
+                $this->validateArchiveListResult(
+                    $archiveFilename,
+                    $hostTarResult['successful'],
+                    $hostTarResult['output'],
+                    $hostTarResult['error']
+                );
+
+                return;
+            }
+
             $process = $this->dockerService->runContainer([
                 '--rm',
                 '-v', "{$hostBackupDir}:/backup:ro",
@@ -160,18 +186,12 @@ final readonly class ImageRestoreService
                 ...$testCommand,
             ]);
 
-            if (!$process->isSuccessful()) {
-                throw new RestoreException(
-                    'Archive integrity check failed: ' . trim($process->getErrorOutput())
-                );
-            }
-
-            $output = trim($process->getOutput());
-            if (empty($output)) {
-                throw new RestoreException("Archive appears to be empty: {$archiveFilename}");
-            }
-
-            $this->logger->info('Archive validation successful');
+            $this->validateArchiveListResult(
+                $archiveFilename,
+                $process->isSuccessful(),
+                $process->getOutput(),
+                $process->getErrorOutput()
+            );
         } catch (RestoreException $e) {
             throw $e;
         } catch (\Throwable $e) {
@@ -179,6 +199,25 @@ final readonly class ImageRestoreService
                 "Failed to validate archive {$archiveFilename}: " . $e->getMessage()
             );
         }
+    }
+
+    private function validateArchiveListResult(
+        string $archiveFilename,
+        bool $successful,
+        string $output,
+        string $errorOutput
+    ): void {
+        if (!$successful) {
+            throw new RestoreException(
+                'Archive integrity check failed: ' . trim($errorOutput)
+            );
+        }
+
+        if (trim($output) === '') {
+            throw new RestoreException("Archive appears to be empty: {$archiveFilename}");
+        }
+
+        $this->logger->info('Archive validation successful');
     }
 
     private function extractImageInfoFromArchive(string $archivePath): array

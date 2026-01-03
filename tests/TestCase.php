@@ -65,6 +65,28 @@ abstract class TestCase extends PHPUnitTestCase
         return $tempFile;
     }
 
+    protected function createTempTarArchive(?string $suffix = '.tar', string $fileName = 'file.txt', string $content = 'content'): string
+    {
+        $tarContent = $this->createTarContent($fileName, $content);
+
+        if ($suffix === '.tar.gz') {
+            $tarContent = gzencode($tarContent);
+        }
+
+        return $this->createTempFile($tarContent, $suffix);
+    }
+
+    protected function writeTarArchive(string $archivePath, string $fileName = 'file.txt', string $content = 'content'): void
+    {
+        $tarContent = $this->createTarContent($fileName, $content);
+
+        if (str_ends_with($archivePath, '.tar.gz')) {
+            $tarContent = gzencode($tarContent);
+        }
+
+        file_put_contents($archivePath, $tarContent);
+    }
+
     /**
      * Helper to create a temporary directory
      */
@@ -75,6 +97,37 @@ abstract class TestCase extends PHPUnitTestCase
         $this->tempDirectories[] = $tempDir;
 
         return $tempDir;
+    }
+
+    protected function createTarContent(string $fileName, string $content): string
+    {
+        $header = str_pad($fileName, 100, "\0");
+        $header .= sprintf('%07o', 0644) . "\0";
+        $header .= sprintf('%07o', 0) . "\0";
+        $header .= sprintf('%07o', 0) . "\0";
+        $header .= sprintf('%011o', strlen($content)) . "\0";
+        $header .= sprintf('%011o', time()) . "\0";
+        $header .= str_repeat(' ', 8);
+        $header .= '0';
+        $header .= str_repeat("\0", 100);
+        $header .= "ustar\0";
+        $header .= '00';
+        $header .= str_pad('root', 32, "\0");
+        $header .= str_pad('root', 32, "\0");
+        $header .= str_repeat("\0", 8);
+        $header .= str_repeat("\0", 8);
+        $header .= str_repeat("\0", 155);
+        $header .= str_repeat("\0", 12);
+
+        $checksum = 0;
+        for ($index = 0; $index < 512; $index++) {
+            $checksum += ord($header[$index]);
+        }
+
+        $header = substr_replace($header, sprintf('%06o', $checksum) . "\0 ", 148, 8);
+        $padding = str_repeat("\0", (512 - strlen($content) % 512) % 512);
+
+        return $header . $content . $padding . str_repeat("\0", 1024);
     }
 
     /**

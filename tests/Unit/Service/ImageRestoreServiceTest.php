@@ -26,7 +26,7 @@ class ImageRestoreServiceTest extends TestCase
         $backupDir = $this->createTempDirectory();
         $imageReference = 'registry.example.com/my_org/my_app:release_2026';
         $archivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode($imageReference) . '.tar';
-        touch($archivePath);
+        $this->writeTarArchive($archivePath);
 
         $backups = $this->restoreService->getAvailableBackups($backupDir);
 
@@ -50,13 +50,9 @@ class ImageRestoreServiceTest extends TestCase
         $backupDir = $this->createTempDirectory();
         $imageReference = 'registry.example.com/my_org/my_app:release_2026';
         $archivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode($imageReference) . '.tar';
-        touch($archivePath);
+        $this->writeTarArchive($archivePath);
 
-        $this->dockerService
-            ->expects($this->once())
-            ->method('runContainer')
-            ->willReturn($this->createMockProcess(0, "manifest.json\n"))
-        ;
+        $this->dockerService->expects($this->never())->method('runContainer');
 
         $this->dockerService
             ->expects($this->once())
@@ -80,13 +76,9 @@ class ImageRestoreServiceTest extends TestCase
     {
         $backupDir = $this->createTempDirectory();
         $archivePath = $backupDir . DIRECTORY_SEPARATOR . 'docker_io_library_nginx_latest.tar';
-        touch($archivePath);
+        $this->writeTarArchive($archivePath);
 
-        $this->dockerService
-            ->expects($this->once())
-            ->method('runContainer')
-            ->willReturn($this->createMockProcess(0, "manifest.json\n"))
-        ;
+        $this->dockerService->expects($this->never())->method('runContainer');
 
         $this->dockerService
             ->expects($this->once())

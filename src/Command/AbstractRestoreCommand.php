@@ -57,6 +57,12 @@ abstract class AbstractRestoreCommand extends Command
                 InputOption::VALUE_REQUIRED,
                 'Override Docker command timeout in seconds (default: BACKUP_TIMEOUT env or 300)'
             )
+            ->addOption(
+                'deep-validate',
+                null,
+                InputOption::VALUE_NONE,
+                'Run full tar integrity validation before restoring (slower)'
+            )
             ->setHelp($this->getCommandHelp())
         ;
 
@@ -102,7 +108,7 @@ abstract class AbstractRestoreCommand extends Command
         }
 
         // Validate archive integrity (quick check)
-        $io->text('🔍 Validating archives...');
+        $io->text('🔍 Checking archives...');
         $invalidArchives = CommandHelper::validateArchivesIntegrity($archivePaths);
         if (!empty($invalidArchives)) {
             $io->error('The following archives failed validation:');
@@ -113,7 +119,10 @@ abstract class AbstractRestoreCommand extends Command
             return Command::FAILURE;
         }
 
-        $io->text('<info>✅ All archives validated successfully</info>');
+        $io->text('<info>✅ All archives passed lightweight validation</info>');
+        if ($input->getOption('deep-validate')) {
+            $io->text('<comment>Deep tar validation enabled; full archive checks will run before each restore.</comment>');
+        }
         $io->newLine();
 
         if (!$this->confirmDestructiveOperation($archivePaths, $overwrite, $io)) {

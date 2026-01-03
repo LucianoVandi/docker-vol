@@ -67,28 +67,10 @@ class CommandHelper
             $archiveName = basename($archivePath);
 
             try {
-                // Quick format check first
-                if (!str_ends_with($archivePath, '.tar') && !str_ends_with($archivePath, '.tar.gz')) {
-                    $invalidArchives[$archiveName] = 'Invalid file extension (expected .tar or .tar.gz)';
-
-                    continue;
+                $failureReason = ArchiveValidator::validateLightweight($archivePath);
+                if ($failureReason !== null) {
+                    $invalidArchives[$archiveName] = $failureReason;
                 }
-
-                // Check file is readable
-                if (!is_readable($archivePath)) {
-                    $invalidArchives[$archiveName] = 'File is not readable';
-
-                    continue;
-                }
-
-                // Check basic file integrity
-                if (filesize($archivePath) === 0) {
-                    $invalidArchives[$archiveName] = 'Archive file is empty';
-
-                    continue;
-                }
-
-                // Full validation will happen during restore in the respective services
             } catch (\Throwable $e) {
                 $invalidArchives[$archiveName] = $e->getMessage();
             }
@@ -114,7 +96,7 @@ class CommandHelper
      */
     public static function hasValidArchiveExtension(string $archivePath): bool
     {
-        return str_ends_with($archivePath, '.tar') || str_ends_with($archivePath, '.tar.gz');
+        return ArchiveValidator::hasValidArchiveExtension($archivePath);
     }
 
     /**

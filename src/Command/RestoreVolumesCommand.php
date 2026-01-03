@@ -94,8 +94,9 @@ HELP;
     protected function performSingleRestore(string $archivePath, InputInterface $input, bool $overwrite)
     {
         $createVolumes = !$input->getOption('no-create-volume');
+        $deepValidate = (bool) $input->getOption('deep-validate');
 
-        return $this->volumeRestoreService->restoreSingleVolume($archivePath, $overwrite, $createVolumes);
+        return $this->volumeRestoreService->restoreSingleVolume($archivePath, $overwrite, $createVolumes, $deepValidate);
     }
 
     // Trait implementations

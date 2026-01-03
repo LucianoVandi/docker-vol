@@ -60,7 +60,7 @@ class BackupRestoreCommandsTest extends TestCase
 
     public function testRestoreVolumesCommandRestoresSelectedArchive(): void
     {
-        $archivePath = $this->createTempFile('backup content', '.tar.gz');
+        $archivePath = $this->createTempTarArchive('.tar.gz');
         $volumeName = basename($archivePath, '.tar.gz');
         $dockerService = $this->createMock(DockerServiceInterface::class);
 
@@ -77,10 +77,9 @@ class BackupRestoreCommandsTest extends TestCase
             ->willReturn($this->createMockProcess(0, $volumeName))
         ;
         $dockerService
-            ->expects($this->exactly(3))
+            ->expects($this->exactly(2))
             ->method('runContainer')
             ->willReturnOnConsecutiveCalls(
-                $this->createMockProcess(0, "file.txt\n"),
                 $this->createMockProcess(0, 'Restore completed'),
                 $this->createMockProcess(0, "12\t/volume\n")
             )
@@ -144,14 +143,10 @@ class BackupRestoreCommandsTest extends TestCase
         $backupDir = $this->createTempDirectory();
         $imageReference = 'nginx:latest';
         $archivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode($imageReference) . '.tar';
-        file_put_contents($archivePath, 'backup content');
+        $this->writeTarArchive($archivePath);
         $dockerService = $this->createMock(DockerServiceInterface::class);
 
-        $dockerService
-            ->expects($this->once())
-            ->method('runContainer')
-            ->willReturn($this->createMockProcess(0, "manifest.json\n"))
-        ;
+        $dockerService->expects($this->never())->method('runContainer');
         $dockerService
             ->expects($this->once())
             ->method('imageExists')
