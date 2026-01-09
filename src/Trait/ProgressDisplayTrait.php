@@ -148,8 +148,12 @@ trait ProgressDisplayTrait
      */
     private function clearCurrentLine(SymfonyStyle $io): void
     {
-        $io->write("\r"); // Return to start of line
-        $io->write(str_repeat(' ', 100)); // Clear the line
-        $io->write("\r"); // Return to start again
+        if ($io->isDecorated()) {
+            $io->write("\r" . str_repeat(' ', 100) . "\r");
+
+            return;
+        }
+
+        $io->newLine();
     }
 }
