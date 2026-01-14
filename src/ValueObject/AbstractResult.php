@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DockerVol\ValueObject;
 
 use DockerVol\Enum\OperationStatus;
+use DockerVol\Helper\CommandHelper;
 
 abstract readonly class AbstractResult
 {
@@ -75,16 +76,7 @@ abstract readonly class AbstractResult
             return 'N/A';
         }
 
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        $size = $this->fileSize;
-        $unitIndex = 0;
-
-        while ($size >= 1024 && $unitIndex < count($units) - 1) {
-            $size /= 1024;
-            $unitIndex++;
-        }
-
-        return sprintf('%.2f %s', $size, $units[$unitIndex]);
+        return CommandHelper::formatFileSize($this->fileSize);
     }
 
     public function getStatusIcon(): string

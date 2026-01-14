@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace DockerVol\ValueObject;
 
+use DockerVol\Helper\CommandHelper;
+
 final readonly class DockerImage
 {
     public function __construct(
@@ -72,16 +74,7 @@ final readonly class DockerImage
 
     public function getFormattedSize(): string
     {
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        $size = $this->size;
-        $unitIndex = 0;
-
-        while ($size >= 1024 && $unitIndex < count($units) - 1) {
-            $size /= 1024;
-            $unitIndex++;
-        }
-
-        return sprintf('%.2f %s', $size, $units[$unitIndex]);
+        return CommandHelper::formatFileSize($this->size);
     }
 
     /**

@@ -178,8 +178,9 @@ class DockerImageTest extends TestCase
     public static function formattedSizeProvider(): array
     {
         return [
-            [0, '0.00 B'],
+            [0, '0 B'],
             [512, '512.00 B'],
+            [1023, '1023.00 B'],
             [1024, '1.00 KB'],
             [1536, '1.50 KB'],
             [1048576, '1.00 MB'],
