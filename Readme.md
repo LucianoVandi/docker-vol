@@ -62,11 +62,17 @@ php dkvol-v1.0.0.phar --help
 # Create uncompressed backups
 ./dkvol backup:volumes volume1 --no-compression
 
+# Override Docker command timeout
+./dkvol backup:volumes volume1 --timeout=600
+
 # Restore volumes
 ./dkvol restore:volumes volume1.tar.gz
 
 # Restore with overwrite existing volumes
 ./dkvol restore:volumes volume1.tar.gz --overwrite
+
+# Run full tar integrity validation before restore
+./dkvol restore:volumes volume1.tar.gz --deep-validate
 
 # List available volume backups
 ./dkvol restore:volumes --list
@@ -90,26 +96,47 @@ php dkvol-v1.0.0.phar --help
 # Create uncompressed backups
 ./dkvol backup:images nginx:latest --no-compression
 
+# Override Docker command timeout
+./dkvol backup:images nginx:latest --timeout=600
+
 # Restore images
-./dkvol restore:images nginx_latest.tar.gz
+./dkvol restore:images nginx%3Alatest.tar.gz
 
 # Restore with overwrite existing images
-./dkvol restore:images nginx_latest.tar.gz --overwrite
+./dkvol restore:images nginx%3Alatest.tar.gz --overwrite
+
+# Run full tar integrity validation before restore
+./dkvol restore:images nginx%3Alatest.tar.gz --deep-validate
 
 # List available image backups
 ./dkvol restore:images --list
 ```
 
-### Global Options
+Image backup filenames are URL-encoded so Docker references remain reversible. For example, `nginx:latest`
+is stored as `nginx%3Alatest.tar.gz`. Older underscore filenames such as `nginx_latest.tar.gz` are still
+decoded on a best-effort basis for compatibility.
+
+### Common Options
 
 ```bash
 # Get help for any command
 ./dkvol backup:volumes --help
 ./dkvol restore:images --help
 
+# Disable compression for backup commands
+./dkvol backup:volumes volume1 --no-compression
+./dkvol backup:images nginx:latest --no-compression
+
+# Override Docker command timeout in seconds
+./dkvol backup:volumes volume1 --timeout=600
+./dkvol restore:images nginx%3Alatest.tar.gz --timeout=600
+
 # Show version information
 ./dkvol --version
 ```
+
+`--no-compression` creates `.tar` archives instead of the default `.tar.gz` archives. `--timeout` takes
+precedence over `BACKUP_TIMEOUT`; if neither is set, Docker commands use a 300 second timeout.
 
 ## Development Setup
 
@@ -204,9 +231,18 @@ make build-standalone
 Generated files:
 - `dkvol.phar` - Portable PHP archive
 - `build/dkvol-linux-x64` - Linux executable
+- `build/dkvol-linux-arm64` - Linux ARM64 executable
 - `build/dkvol-windows-x64.exe` - Windows executable
 - `build/dkvol-macos-x64` - macOS Intel executable
 - `build/dkvol-macos-arm64` - macOS Apple Silicon executable
+
+Release assets are renamed with the pushed version tag:
+- `dkvol-v1.0.0.phar`
+- `dkvol-linux-x64-v1.0.0`
+- `dkvol-linux-arm64-v1.0.0`
+- `dkvol-macos-x64-v1.0.0`
+- `dkvol-macos-arm64-v1.0.0`
+- `dkvol-windows-x64-v1.0.0.exe`
 
 ### Release Process
 
