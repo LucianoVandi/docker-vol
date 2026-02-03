@@ -45,19 +45,24 @@ The <info>%command.name%</info> command restores Docker images from backup archi
 <info>Examples:</info>
 
   # Restore specific archives
-  <info>php %command.full_name% nginx_latest.tar.gz mysql_8.0.tar.gz</info>
+  <info>php %command.full_name% nginx%3Alatest.tar.gz mysql%3A8.0.tar.gz</info>
 
   # Restore with custom backup directory
-  <info>php %command.full_name% nginx_latest.tar.gz --backup-dir=/tmp/backups</info>
+  <info>php %command.full_name% nginx%3Alatest.tar.gz --backup-dir=/tmp/backups</info>
 
   # Overwrite existing images
-  <info>php %command.full_name% nginx_latest.tar.gz --overwrite</info>
+  <info>php %command.full_name% nginx%3Alatest.tar.gz --overwrite</info>
+
+  # Run full tar integrity validation before restore
+  <info>php %command.full_name% nginx%3Alatest.tar.gz --deep-validate</info>
 
   # List available backup archives
   <info>php %command.full_name% --list</info>
 
 The command uses Docker's native load functionality to restore images from archives.
 Both compressed (.tar.gz) and uncompressed (.tar) archives are supported.
+Image backup filenames are URL-encoded, for example nginx:latest becomes nginx%3Alatest.tar.gz.
+Legacy underscore filenames such as nginx_latest.tar.gz are decoded on a best-effort basis.
 By default, existing images with the same name will not be overwritten.
 HELP;
     }
