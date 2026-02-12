@@ -1,0 +1,38 @@
+name: Quality
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: zip, zlib
+          coverage: none
+          tools: composer
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Check coding standards
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff --using-cache=no
+
+      - name: Run static analysis
+        run: vendor/bin/phpstan analyse src --level=5
+
+      - name: Run test suite
+        run: vendor/bin/phpunit
