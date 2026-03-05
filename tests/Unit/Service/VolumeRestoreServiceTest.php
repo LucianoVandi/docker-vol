@@ -162,4 +162,53 @@ class VolumeRestoreServiceTest extends TestCase
 
         $method->invoke($this->restoreService, $archivePath);
     }
+
+    public function testCreateVolumeThrowsRestoreExceptionWhenDockerCreateFails(): void
+    {
+        $this->dockerService
+            ->expects($this->once())
+            ->method('createVolume')
+            ->with('broken-volume')
+            ->willReturn($this->createMockProcess(1, '', 'create failed'))
+        ;
+
+        $method = new \ReflectionMethod(VolumeRestoreService::class, 'createVolume');
+        $method->setAccessible(true);
+
+        $this->expectException(RestoreException::class);
+        $this->expectExceptionMessage("Failed to create volume 'broken-volume'");
+
+        $method->invoke($this->restoreService, 'broken-volume');
+    }
+
+    public function testCleanVolumeThrowsRestoreExceptionWhenDockerCleanFails(): void
+    {
+        $this->dockerService
+            ->expects($this->once())
+            ->method('runContainer')
+            ->willReturn($this->createMockProcess(1, '', 'clean failed'))
+        ;
+
+        $method = new \ReflectionMethod(VolumeRestoreService::class, 'cleanVolume');
+        $method->setAccessible(true);
+
+        $this->expectException(RestoreException::class);
+        $this->expectExceptionMessage("Failed to clean volume 'broken-volume'");
+
+        $method->invoke($this->restoreService, 'broken-volume');
+    }
+
+    public function testAvailableBackupsIgnoreDirectoriesWithArchiveExtensions(): void
+    {
+        $backupDir = $this->createTempDirectory();
+        mkdir($backupDir . DIRECTORY_SEPARATOR . 'not-a-file.tar');
+        $archivePath = $backupDir . DIRECTORY_SEPARATOR . 'real-volume.tar.gz';
+        $this->writeTarArchive($archivePath);
+
+        $backups = $this->restoreService->getAvailableBackups($backupDir);
+
+        $this->assertCount(1, $backups);
+        $this->assertArrayHasKey('real-volume', $backups);
+        $this->assertSame($archivePath, $backups['real-volume']['path']);
+    }
 }

@@ -96,4 +96,19 @@ class ImageRestoreServiceTest extends TestCase
 
         $this->assertTrue($result->isSkipped());
     }
+
+    public function testAvailableBackupsIgnoreDirectoriesWithArchiveExtensions(): void
+    {
+        $backupDir = $this->createTempDirectory();
+        mkdir($backupDir . DIRECTORY_SEPARATOR . 'not-a-file.tar.gz');
+        $imageReference = 'nginx:latest';
+        $archivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode($imageReference) . '.tar.gz';
+        $this->writeTarArchive($archivePath);
+
+        $backups = $this->restoreService->getAvailableBackups($backupDir);
+
+        $this->assertCount(1, $backups);
+        $this->assertSame($imageReference, $backups[0]['name']);
+        $this->assertSame($archivePath, $backups[0]['path']);
+    }
 }

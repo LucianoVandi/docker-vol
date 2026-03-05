@@ -92,6 +92,47 @@ class DockerServiceTest extends TestCase
         }
     }
 
+    public function testStreamSavedImagePreservesExitCodeAfterPartialOutput(): void
+    {
+        $binDir = $this->createTempDirectory();
+        $dockerPath = $binDir . DIRECTORY_SEPARATOR . 'docker';
+        file_put_contents($dockerPath, "#!/bin/sh\nprintf 'partial-tar'\nprintf 'stream failed' >&2\nexit 17\n");
+        chmod($dockerPath, 0755);
+
+        $previousPath = getenv('PATH') ?: '';
+        $previousServerPath = $_SERVER['PATH'] ?? null;
+        $previousEnvPath = $_ENV['PATH'] ?? null;
+        $testPath = $binDir . PATH_SEPARATOR . $previousPath;
+        putenv('PATH=' . $testPath);
+        $_SERVER['PATH'] = $testPath;
+        $_ENV['PATH'] = $testPath;
+
+        $chunks = '';
+
+        try {
+            (new DockerService())->streamSavedImage('nginx:latest', function (string $chunk) use (&$chunks): void {
+                $chunks .= $chunk;
+            });
+            $this->fail('Expected DockerCommandException was not thrown.');
+        } catch (DockerCommandException $exception) {
+            $this->assertSame(17, $exception->getCode());
+            $this->assertStringContainsString('stream failed', $exception->getMessage());
+            $this->assertSame('partial-tar', $chunks);
+        } finally {
+            putenv('PATH=' . $previousPath);
+            if ($previousServerPath === null) {
+                unset($_SERVER['PATH']);
+            } else {
+                $_SERVER['PATH'] = $previousServerPath;
+            }
+            if ($previousEnvPath === null) {
+                unset($_ENV['PATH']);
+            } else {
+                $_ENV['PATH'] = $previousEnvPath;
+            }
+        }
+    }
+
     private function getBackupTimeout(): int
     {
         $service = new DockerService();

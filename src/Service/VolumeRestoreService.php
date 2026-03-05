@@ -132,6 +132,10 @@ final readonly class VolumeRestoreService
         $files = glob($backupDirectory . '/*.{tar,tar.gz}', GLOB_BRACE);
 
         foreach ($files ?: [] as $file) {
+            if (!is_file($file)) {
+                continue;
+            }
+
             $volumeName = $this->extractVolumeNameFromPath($file);
             $compressed = str_ends_with($file, '.tar.gz');
             $size = filesize($file) ?: 0;

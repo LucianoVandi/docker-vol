@@ -109,7 +109,7 @@ final readonly class ImageRestoreService
         $backups = [];
         $files = glob($backupDirectory . '/*.{tar,tar.gz}', GLOB_BRACE);
 
-        foreach ($files as $filePath) {
+        foreach ($files ?: [] as $filePath) {
             if (!is_file($filePath)) {
                 continue;
             }
