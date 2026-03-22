@@ -6,6 +6,7 @@ namespace DockerVol\Trait;
 
 use DockerVol\ValueObject\AbstractResult;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Console\Terminal;
 
 trait ProgressDisplayTrait
 {
@@ -149,7 +150,8 @@ trait ProgressDisplayTrait
     private function clearCurrentLine(SymfonyStyle $io): void
     {
         if ($io->isDecorated()) {
-            $io->write("\r" . str_repeat(' ', 100) . "\r");
+            $clearWidth = max(200, (new Terminal())->getWidth());
+            $io->write("\r" . str_repeat(' ', $clearWidth) . "\r");
 
             return;
         }
