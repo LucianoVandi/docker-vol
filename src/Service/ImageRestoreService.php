@@ -293,13 +293,7 @@ final readonly class ImageRestoreService
             $this->performCompressedImageRestore($archivePath);
         } else {
             // Direct docker load for uncompressed
-            $process = $this->dockerService->loadImage($archivePath);
-
-            if (!$process->isSuccessful()) {
-                throw new RestoreException(
-                    'Failed to load image: ' . $process->getErrorOutput()
-                );
-            }
+            $this->dockerService->loadImage($archivePath);
         }
     }
 
@@ -313,13 +307,7 @@ final readonly class ImageRestoreService
             $this->decompressWithPhpGzip($archivePath, $tempFile);
 
             // Step 2: Load the decompressed tar with docker load
-            $process = $this->dockerService->loadImage($tempFile);
-
-            if (!$process->isSuccessful()) {
-                throw new RestoreException(
-                    'Failed to load decompressed image: ' . $process->getErrorOutput()
-                );
-            }
+            $this->dockerService->loadImage($tempFile);
 
             $this->logger->info('Successfully restored compressed image: ' . basename($archivePath));
         } finally {
@@ -347,7 +335,7 @@ final readonly class ImageRestoreService
         try {
             // Decompress in chunks to handle large files efficiently
             while (!gzeof($inputHandle)) {
-                $chunk = gzread($inputHandle, 8192); // 8KB chunks
+                $chunk = gzread($inputHandle, 1024 * 1024);
                 if ($chunk === false) {
                     throw new RestoreException('Failed to read compressed data');
                 }

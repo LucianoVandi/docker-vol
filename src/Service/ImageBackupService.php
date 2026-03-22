@@ -97,13 +97,7 @@ final readonly class ImageBackupService
             $this->performCompressedImageBackup($imageReference, $archivePath);
         } else {
             // Use docker save directly
-            $process = $this->dockerService->saveImage($imageReference, $archivePath);
-
-            if (!$process->isSuccessful()) {
-                throw new BackupException(
-                    'Failed to save image: ' . $process->getErrorOutput()
-                );
-            }
+            $this->dockerService->saveImage($imageReference, $archivePath);
         }
 
         if (!file_exists($archivePath)) {
@@ -113,7 +107,7 @@ final readonly class ImageBackupService
 
     private function performCompressedImageBackup(string $imageReference, string $archivePath): void
     {
-        $outputHandle = gzopen($archivePath, 'wb9');
+        $outputHandle = gzopen($archivePath, 'wb6');
         if (!$outputHandle) {
             throw new BackupException('Failed to create compressed output file');
         }
