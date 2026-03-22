@@ -171,31 +171,19 @@ final readonly class VolumeRestoreService
     {
         $this->logger->info("Creating volume: {$volumeName}");
 
-        $process = $this->dockerService->createVolume($volumeName);
-
-        if (!$process->isSuccessful()) {
-            throw new RestoreException(
-                "Failed to create volume '{$volumeName}': " . $process->getErrorOutput()
-            );
-        }
+        $this->dockerService->createVolume($volumeName);
     }
 
     private function cleanVolume(string $volumeName): void
     {
         $this->logger->info("Cleaning existing volume: {$volumeName}");
 
-        $process = $this->dockerService->runContainer([
+        $this->dockerService->runContainer([
             '--rm',
             '-v', "{$volumeName}:/volume",
             'alpine',
             'sh', '-c', 'rm -rf /volume/* /volume/.[!.]* /volume/..?*',
         ]);
-
-        if (!$process->isSuccessful()) {
-            throw new RestoreException(
-                "Failed to clean volume '{$volumeName}': " . $process->getErrorOutput()
-            );
-        }
     }
 
     private function performVolumeRestore(string $volumeName, string $archivePath): ?int
@@ -221,13 +209,7 @@ final readonly class VolumeRestoreService
             ...$tarCommand,
         ];
 
-        $process = $this->dockerService->runContainer($dockerArgs);
-
-        if (!$process->isSuccessful()) {
-            throw new RestoreException(
-                'Failed to extract backup archive: ' . $process->getErrorOutput()
-            );
-        }
+        $this->dockerService->runContainer($dockerArgs);
 
         // Try to get the size of extracted content (optional)
         return $this->getVolumeSize($volumeName);

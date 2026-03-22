@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DockerVol\Tests\Unit\Service;
 
 use DockerVol\Contract\DockerServiceInterface;
+use DockerVol\Exception\DockerCommandException;
 use DockerVol\Exception\RestoreException;
 use DockerVol\Service\VolumeRestoreService;
 use DockerVol\Tests\TestCase;
@@ -169,14 +170,14 @@ class VolumeRestoreServiceTest extends TestCase
             ->expects($this->once())
             ->method('createVolume')
             ->with('broken-volume')
-            ->willReturn($this->createMockProcess(1, '', 'create failed'))
+            ->willThrowException(new DockerCommandException('create failed'))
         ;
 
         $method = new \ReflectionMethod(VolumeRestoreService::class, 'createVolume');
         $method->setAccessible(true);
 
-        $this->expectException(RestoreException::class);
-        $this->expectExceptionMessage("Failed to create volume 'broken-volume'");
+        $this->expectException(DockerCommandException::class);
+        $this->expectExceptionMessage('create failed');
 
         $method->invoke($this->restoreService, 'broken-volume');
     }
@@ -186,14 +187,14 @@ class VolumeRestoreServiceTest extends TestCase
         $this->dockerService
             ->expects($this->once())
             ->method('runContainer')
-            ->willReturn($this->createMockProcess(1, '', 'clean failed'))
+            ->willThrowException(new DockerCommandException('clean failed'))
         ;
 
         $method = new \ReflectionMethod(VolumeRestoreService::class, 'cleanVolume');
         $method->setAccessible(true);
 
-        $this->expectException(RestoreException::class);
-        $this->expectExceptionMessage("Failed to clean volume 'broken-volume'");
+        $this->expectException(DockerCommandException::class);
+        $this->expectExceptionMessage('clean failed');
 
         $method->invoke($this->restoreService, 'broken-volume');
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DockerVol\Tests\Unit\Service;
 
 use DockerVol\Contract\DockerServiceInterface;
+use DockerVol\Exception\DockerCommandException;
 use DockerVol\Service\VolumeBackupService;
 use DockerVol\Tests\TestCase;
 
@@ -244,10 +245,9 @@ class VolumeBackupServiceTest extends TestCase
             ->willReturn(true)
         ;
 
-        $failedProcess = $this->createMockProcess(1, '', 'Docker error');
         $this->dockerService
             ->method('runContainer')
-            ->willReturn($failedProcess)
+            ->willThrowException(new DockerCommandException('Docker error'))
         ;
 
         $result = $this->backupService->backupSingleVolume($volumeName, $backupDir);

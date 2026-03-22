@@ -110,13 +110,7 @@ final readonly class VolumeBackupService
             ...$tarCommand,
         ];
 
-        $process = $this->dockerService->runContainer($dockerArgs);
-
-        if (!$process->isSuccessful()) {
-            throw new BackupException(
-                'Failed to create backup archive: ' . $process->getErrorOutput()
-            );
-        }
+        $this->dockerService->runContainer($dockerArgs);
 
         if (!file_exists($archivePath)) {
             throw new BackupException("Backup archive was not created: {$archivePath}");
