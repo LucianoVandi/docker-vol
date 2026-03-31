@@ -73,6 +73,47 @@ class DockerServiceTest extends TestCase
         }
     }
 
+    public function testListVolumesIgnoresMalformedJsonLines(): void
+    {
+        $binDir = $this->createTempDirectory();
+        $dockerPath = $binDir . DIRECTORY_SEPARATOR . 'docker';
+        file_put_contents($dockerPath, <<<'SH'
+#!/bin/sh
+printf '{"Name":"volume-one","Driver":"local"}\n'
+printf '{not-json}\n'
+printf '{"Name":"volume-two","Driver":"local"}\n'
+SH);
+        chmod($dockerPath, 0755);
+
+        $previousPath = getenv('PATH') ?: '';
+        $previousServerPath = $_SERVER['PATH'] ?? null;
+        $previousEnvPath = $_ENV['PATH'] ?? null;
+        $testPath = $binDir . PATH_SEPARATOR . $previousPath;
+        putenv('PATH=' . $testPath);
+        $_SERVER['PATH'] = $testPath;
+        $_ENV['PATH'] = $testPath;
+
+        try {
+            $volumes = (new DockerService())->listVolumes();
+
+            $this->assertCount(2, $volumes);
+            $this->assertSame('volume-one', $volumes[0]->name);
+            $this->assertSame('volume-two', $volumes[1]->name);
+        } finally {
+            putenv('PATH=' . $previousPath);
+            if ($previousServerPath === null) {
+                unset($_SERVER['PATH']);
+            } else {
+                $_SERVER['PATH'] = $previousServerPath;
+            }
+            if ($previousEnvPath === null) {
+                unset($_ENV['PATH']);
+            } else {
+                $_ENV['PATH'] = $previousEnvPath;
+            }
+        }
+    }
+
     public function testExecuteCommandPreservesProcessExitCode(): void
     {
         $binDir = $this->createTempDirectory();

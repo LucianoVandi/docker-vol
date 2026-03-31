@@ -199,6 +199,30 @@ class VolumeBackupServiceTest extends TestCase
         $this->assertTrue($result->isSuccessful());
     }
 
+    public function testBackupSkipsWhenArchiveAlreadyExists(): void
+    {
+        $volumeName = 'test-volume';
+        $backupDir = $this->createTempDirectory();
+        touch($backupDir . DIRECTORY_SEPARATOR . $volumeName . '.tar.gz');
+
+        $this->dockerService
+            ->expects($this->once())
+            ->method('volumeExists')
+            ->with($volumeName)
+            ->willReturn(true)
+        ;
+
+        $this->dockerService
+            ->expects($this->never())
+            ->method('runContainer')
+        ;
+
+        $result = $this->backupService->backupSingleVolume($volumeName, $backupDir);
+
+        $this->assertTrue($result->isSkipped());
+        $this->assertStringContainsString('File already exists', (string) $result->message);
+    }
+
     public function testBackupMapsContainerPathFromConfiguredProjectDirectories(): void
     {
         $_ENV['DOCKER_BACKUP_DEV_MODE'] = '1';

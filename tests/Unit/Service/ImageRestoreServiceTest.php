@@ -45,6 +45,17 @@ class ImageRestoreServiceTest extends TestCase
         $this->assertSame('docker.io/library/nginx:latest', $backups[0]['name']);
     }
 
+    public function testAvailableBackupsDecodeLegacyCustomRegistryFilenameBestEffort(): void
+    {
+        $backupDir = $this->createTempDirectory();
+        touch($backupDir . DIRECTORY_SEPARATOR . 'my.private.registry.io_team_image_release.tar.gz');
+
+        $backups = $this->restoreService->getAvailableBackups($backupDir);
+
+        $this->assertCount(1, $backups);
+        $this->assertSame('my.private.registry.io/team/image:release', $backups[0]['name']);
+    }
+
     public function testRestoreSkipsExistingImageWithUnderscoreInName(): void
     {
         $backupDir = $this->createTempDirectory();

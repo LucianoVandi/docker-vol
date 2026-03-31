@@ -189,4 +189,24 @@ class BackupRestoreCommandsTest extends TestCase
         $this->assertSame(Command::SUCCESS, $exitCode);
         $this->assertStringContainsString('Docker Image Restore', $tester->getDisplay());
     }
+
+    public function testRestoreImagesCommandFailsForInvalidArchive(): void
+    {
+        $archivePath = $this->createTempFile('not a tar archive', '.tar');
+        $dockerService = $this->createMock(DockerServiceInterface::class);
+
+        $dockerService->expects($this->never())->method('imageExists');
+        $dockerService->expects($this->never())->method('loadImage');
+
+        $tester = new CommandTester(new RestoreImagesCommand(new ImageRestoreService($dockerService)));
+
+        $exitCode = $tester->execute([
+            'archives' => [basename($archivePath)],
+            '--backup-dir' => dirname($archivePath),
+        ]);
+
+        $this->assertSame(Command::FAILURE, $exitCode);
+        $this->assertStringContainsString('failed validation', $tester->getDisplay());
+        $this->assertStringContainsString('Invalid tar header', $tester->getDisplay());
+    }
 }
