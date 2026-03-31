@@ -113,10 +113,16 @@ final class ArchiveValidator
 
     private static function isHostTarAvailable(): bool
     {
+        static $available = null;
+
+        if ($available !== null) {
+            return $available;
+        }
+
         $process = new Process(['sh', '-c', 'command -v tar']);
         $process->setTimeout(5);
         $process->run();
 
-        return $process->isSuccessful();
+        return $available = $process->isSuccessful();
     }
 }

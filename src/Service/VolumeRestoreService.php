@@ -75,27 +75,21 @@ final readonly class VolumeRestoreService
             // Check if volume already exists
             $volumeExists = $this->dockerService->volumeExists($volumeName);
 
-            if ($volumeExists && !$overwrite) {
+            if (!$volumeExists) {
+                if (!$createVolume) {
+                    throw new RestoreException("Volume '{$volumeName}' does not exist and --no-create-volume was specified");
+                }
+
+                $this->createVolume($volumeName);
+            } elseif ($overwrite) {
+                $this->cleanVolume($volumeName);
+            } else {
                 $this->logger->warning("Volume already exists, skipping: {$volumeName}");
 
                 return RestoreResult::skipped(
                     $volumeName,
                     'Volume already exists. Use --overwrite to replace it.'
                 );
-            }
-
-            // Create volume if it doesn't exist and createVolume is true
-            if (!$volumeExists && $createVolume) {
-                $this->createVolume($volumeName);
-            // @phpstan-ignore-next-line
-            } elseif (!$volumeExists && !$createVolume) {
-                throw new RestoreException("Volume '{$volumeName}' does not exist and --no-create-volume was specified");
-            }
-
-            // If volume exists and overwrite is true, we need to clean it first
-            // @phpstan-ignore-next-line
-            if ($volumeExists && $overwrite) {
-                $this->cleanVolume($volumeName);
             }
 
             // Perform restore
