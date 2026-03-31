@@ -41,7 +41,7 @@ trait ListableResourceTrait
         }
 
         $io->table($this->getTableHeaders(), $tableData);
-        $io->text(sprintf('Total: <info>%d</info> %s', count($resources), $this->getResourceCountLabel($input)));
+        $io->text(sprintf('Total: <info>%d</info> %s', count($tableData), $this->getResourceCountLabel($input)));
 
         return self::SUCCESS;
     }

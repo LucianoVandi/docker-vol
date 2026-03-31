@@ -29,7 +29,7 @@ console: ## Avvia la console CLI
 	$(DOCKER_COMPOSE) exec docker-backup-dev php bin/console
 
 backup-volumes: ## Esempio backup volumi
-	$(DOCKER_COMPOSE) exec docker-backup-dev php bin/console backup:volumes
+	$(DOCKER_COMPOSE) exec docker-backup-dev php bin/console backup:volumes --list
 
 # Build commands
 build-phar: ## Crea il file .phar

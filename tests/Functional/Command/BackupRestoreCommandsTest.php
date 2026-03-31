@@ -138,6 +138,25 @@ class BackupRestoreCommandsTest extends TestCase
         $this->assertFileExists($archivePath);
     }
 
+    public function testBackupImagesListCountsRenderedRowsForMultiTagImages(): void
+    {
+        $dockerService = $this->createMock(DockerServiceInterface::class);
+        $dockerService
+            ->expects($this->once())
+            ->method('listImages')
+            ->willReturn([
+                $this->createTestImage(repoTags: ['app:latest', 'app:stable', 'app:1.0']),
+            ])
+        ;
+
+        $tester = new CommandTester(new BackupImagesCommand(new ImageBackupService($dockerService)));
+
+        $exitCode = $tester->execute(['--list' => true]);
+
+        $this->assertSame(Command::SUCCESS, $exitCode);
+        $this->assertStringContainsString('Total: 3 images', $tester->getDisplay());
+    }
+
     public function testRestoreImagesCommandRestoresSelectedArchive(): void
     {
         $backupDir = $this->createTempDirectory();
