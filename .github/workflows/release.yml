@@ -25,6 +25,18 @@ jobs:
           ini-values: memory_limit=512M, phar.readonly=0
           tools: composer
 
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Check coding standards
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff --using-cache=no
+
+      - name: Run static analysis
+        run: vendor/bin/phpstan analyse src --level=5
+
+      - name: Run test suite
+        run: vendor/bin/phpunit --no-coverage
+
       - name: Extract version from tag
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
@@ -46,7 +58,7 @@ jobs:
           
           # Install dependencies
           echo "Installing dependencies..."
-          composer install --no-dev --optimize-autoloader
+          composer install --no-dev --optimize-autoloader --no-interaction --no-progress
           
           # Create .phar with Box
           echo "Creating .phar file with Box..."
