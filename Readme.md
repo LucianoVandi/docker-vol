@@ -9,30 +9,35 @@ A command-line utility for backing up and restoring Docker resources (volumes an
 ### Download Prebuilt Binaries
 
 Download the latest release from [GitHub Releases](https://github.com/LucianoVandi/docker-backup-cli/releases):
+Set `VERSION` to the release tag you want to install, for example `v1.2.3`.
 
 ```bash
+VERSION=vX.Y.Z
+
 # Linux x64
-wget https://github.com/LucianoVandi/docker-backup-cli/releases/latest/download/dkvol-linux-x64-v1.0.0
-chmod +x dkvol-linux-x64-v1.0.0
-./dkvol-linux-x64-v1.0.0 --help
+wget https://github.com/LucianoVandi/docker-backup-cli/releases/download/${VERSION}/dkvol-linux-x64-${VERSION}
+chmod +x dkvol-linux-x64-${VERSION}
+./dkvol-linux-x64-${VERSION} --help
 
 # macOS x64
-wget https://github.com/LucianoVandi/docker-backup-cli/releases/latest/download/dkvol-macos-x64-v1.0.0
-chmod +x dkvol-macos-x64-v1.0.0
-./dkvol-macos-x64-v1.0.0 --help
+wget https://github.com/LucianoVandi/docker-backup-cli/releases/download/${VERSION}/dkvol-macos-x64-${VERSION}
+chmod +x dkvol-macos-x64-${VERSION}
+./dkvol-macos-x64-${VERSION} --help
 
 # Windows x64
-# Download dkvol-windows-x64-v1.0.0.exe and run directly
+# Download dkvol-windows-x64-${VERSION}.exe from the release and run directly
 ```
 
 ### Alternative: Using .phar
 
 ```bash
+VERSION=vX.Y.Z
+
 # Download .phar file
-wget https://github.com/LucianoVandi/docker-backup-cli/releases/latest/download/dkvol-v1.0.0.phar
+wget https://github.com/LucianoVandi/docker-backup-cli/releases/download/${VERSION}/dkvol-${VERSION}.phar
 
 # Run with PHP
-php dkvol-v1.0.0.phar --help
+php dkvol-${VERSION}.phar --help
 ```
 
 ## Requirements
@@ -230,19 +235,19 @@ make build-standalone
 
 Generated files:
 - `dkvol.phar` - Portable PHP archive
-- `build/dkvol-linux-x64` - Linux executable
-- `build/dkvol-linux-arm64` - Linux ARM64 executable
-- `build/dkvol-windows-x64.exe` - Windows executable
-- `build/dkvol-macos-x64` - macOS Intel executable
-- `build/dkvol-macos-arm64` - macOS Apple Silicon executable
+- `build/linux/linux-x64` - Linux executable
+- `build/linux/linux-arm` - Linux ARM64 executable
+- `build/windows/windows-x64.exe` - Windows executable
+- `build/mac/mac-x64` - macOS Intel executable
+- `build/mac/mac-arm` - macOS Apple Silicon executable
 
 Release assets are renamed with the pushed version tag:
-- `dkvol-v1.0.0.phar`
-- `dkvol-linux-x64-v1.0.0`
-- `dkvol-linux-arm64-v1.0.0`
-- `dkvol-macos-x64-v1.0.0`
-- `dkvol-macos-arm64-v1.0.0`
-- `dkvol-windows-x64-v1.0.0.exe`
+- `dkvol-<version>.phar`
+- `dkvol-linux-x64-<version>`
+- `dkvol-linux-arm64-<version>`
+- `dkvol-macos-x64-<version>`
+- `dkvol-macos-arm64-<version>`
+- `dkvol-windows-x64-<version>.exe`
 
 ### Release Process
 
