@@ -43,8 +43,8 @@ class VolumeBackupServiceTest extends TestCase
         $this->dockerService
             ->expects($this->once())
             ->method('runContainer')
-            ->willReturnCallback(function () use ($expectedArchivePath) {
-                touch($expectedArchivePath);
+            ->willReturnCallback(function (array $dockerArgs) use ($backupDir) {
+                $this->touchVolumeArchiveFromDockerArgs($dockerArgs, $backupDir);
 
                 return $this->createMockProcess(0, 'Backup completed');
             })
@@ -96,14 +96,11 @@ class VolumeBackupServiceTest extends TestCase
             ->willReturn(true)
         ;
 
-        $callCount = 0;
         $this->dockerService
             ->expects($this->exactly(2))
             ->method('runContainer')
-            ->willReturnCallback(function () use ($backupDir, $volumeNames, &$callCount) {
-                $archivePath = $backupDir . DIRECTORY_SEPARATOR . $volumeNames[$callCount] . '.tar.gz';
-                touch($archivePath);
-                $callCount++;
+            ->willReturnCallback(function (array $dockerArgs) use ($backupDir) {
+                $this->touchVolumeArchiveFromDockerArgs($dockerArgs, $backupDir);
 
                 return $this->createMockProcess(0, 'Backup completed');
             })
@@ -127,14 +124,11 @@ class VolumeBackupServiceTest extends TestCase
             ->willReturn(true)
         ;
 
-        $callCount = 0;
         $this->dockerService
             ->expects($this->exactly(2))
             ->method('runContainer')
-            ->willReturnCallback(function () use ($backupDir, $volumeNames, &$callCount) {
-                $archivePath = $backupDir . DIRECTORY_SEPARATOR . $volumeNames[$callCount] . '.tar';
-                touch($archivePath);
-                $callCount++;
+            ->willReturnCallback(function (array $dockerArgs) use ($backupDir) {
+                $this->touchVolumeArchiveFromDockerArgs($dockerArgs, $backupDir);
 
                 return $this->createMockProcess(0, 'Backup completed');
             })
@@ -187,8 +181,8 @@ class VolumeBackupServiceTest extends TestCase
 
         $this->dockerService
             ->method('runContainer')
-            ->willReturnCallback(function () use ($expectedArchivePath) {
-                touch($expectedArchivePath);
+            ->willReturnCallback(function (array $dockerArgs) use ($backupDir) {
+                $this->touchVolumeArchiveFromDockerArgs($dockerArgs, $backupDir);
 
                 return $this->createMockProcess(0, 'Backup completed');
             })
@@ -231,7 +225,6 @@ class VolumeBackupServiceTest extends TestCase
 
         $volumeName = 'test-volume';
         $backupDir = $this->createTempDirectory();
-        $expectedArchivePath = $backupDir . DIRECTORY_SEPARATOR . $volumeName . '.tar.gz';
         $expectedHostBackupDir = '/host/project' . substr($backupDir, strlen(sys_get_temp_dir()));
 
         try {
@@ -243,8 +236,8 @@ class VolumeBackupServiceTest extends TestCase
             $this->dockerService
                 ->expects($this->once())
                 ->method('runContainer')
-                ->with($this->callback(function (array $dockerArgs) use ($expectedArchivePath, $expectedHostBackupDir): bool {
-                    touch($expectedArchivePath);
+                ->with($this->callback(function (array $dockerArgs) use ($backupDir, $expectedHostBackupDir): bool {
+                    $this->touchVolumeArchiveFromDockerArgs($dockerArgs, $backupDir);
 
                     return in_array("{$expectedHostBackupDir}:/backup", $dockerArgs, true);
                 }))
@@ -277,5 +270,75 @@ class VolumeBackupServiceTest extends TestCase
         $result = $this->backupService->backupSingleVolume($volumeName, $backupDir);
 
         $this->assertFalse($result->isSuccessful());
+    }
+
+    public function testBackupSingleVolumeCreatesMissingBackupDirectory(): void
+    {
+        $volumeName = 'test-volume';
+        $backupDir = $this->createTempDirectory() . DIRECTORY_SEPARATOR . 'nested';
+        $expectedArchivePath = $backupDir . DIRECTORY_SEPARATOR . $volumeName . '.tar.gz';
+
+        $this->dockerService
+            ->method('volumeExists')
+            ->willReturn(true)
+        ;
+
+        $this->dockerService
+            ->expects($this->once())
+            ->method('runContainer')
+            ->willReturnCallback(function (array $dockerArgs) use ($backupDir) {
+                $this->touchVolumeArchiveFromDockerArgs($dockerArgs, $backupDir);
+
+                return $this->createMockProcess(0, 'Backup completed');
+            })
+        ;
+
+        $result = $this->backupService->backupSingleVolume($volumeName, $backupDir);
+
+        $this->assertTrue($result->isSuccessful());
+        $this->assertFileExists($expectedArchivePath);
+    }
+
+    public function testBackupSingleVolumeCleansTemporaryArchiveWhenDockerFails(): void
+    {
+        $volumeName = 'test-volume';
+        $backupDir = $this->createTempDirectory();
+        $expectedArchivePath = $backupDir . DIRECTORY_SEPARATOR . $volumeName . '.tar.gz';
+
+        $this->dockerService
+            ->method('volumeExists')
+            ->willReturn(true)
+        ;
+
+        $this->dockerService
+            ->expects($this->once())
+            ->method('runContainer')
+            ->willReturnCallback(function (array $dockerArgs) use ($backupDir) {
+                $this->touchVolumeArchiveFromDockerArgs($dockerArgs, $backupDir);
+
+                throw new DockerCommandException('Docker error');
+            })
+        ;
+
+        $result = $this->backupService->backupSingleVolume($volumeName, $backupDir);
+
+        $this->assertTrue($result->isFailed());
+        $this->assertFileDoesNotExist($expectedArchivePath);
+        $this->assertSame([], glob($backupDir . DIRECTORY_SEPARATOR . '.*.tmp.*') ?: []);
+    }
+
+    private function touchVolumeArchiveFromDockerArgs(array $dockerArgs, string $backupDir): void
+    {
+        $archiveArgument = null;
+        foreach ($dockerArgs as $argument) {
+            if (is_string($argument) && str_starts_with($argument, '/backup/')) {
+                $archiveArgument = $argument;
+
+                break;
+            }
+        }
+
+        $this->assertNotNull($archiveArgument);
+        touch($backupDir . DIRECTORY_SEPARATOR . basename((string) $archiveArgument));
     }
 }

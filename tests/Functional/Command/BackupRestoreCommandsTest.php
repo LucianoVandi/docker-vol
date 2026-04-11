@@ -39,8 +39,8 @@ class BackupRestoreCommandsTest extends TestCase
         $dockerService
             ->expects($this->once())
             ->method('runContainer')
-            ->willReturnCallback(function () use ($archivePath) {
-                touch($archivePath);
+            ->willReturnCallback(function (array $dockerArgs) use ($backupDir) {
+                $this->touchVolumeArchiveFromDockerArgs($dockerArgs, $backupDir);
 
                 return $this->createMockProcess(0, 'Backup completed');
             })
@@ -117,7 +117,10 @@ class BackupRestoreCommandsTest extends TestCase
         $dockerService
             ->expects($this->once())
             ->method('saveImage')
-            ->with($imageReference, $archivePath)
+            ->with(
+                $imageReference,
+                $this->callback(fn (string $outputPath): bool => $this->isTemporaryArchivePath($outputPath, $archivePath))
+            )
             ->willReturnCallback(function (string $imageReference, string $outputPath) {
                 touch($outputPath);
 
@@ -208,5 +211,77 @@ class BackupRestoreCommandsTest extends TestCase
         $this->assertSame(Command::FAILURE, $exitCode);
         $this->assertStringContainsString('failed validation', $tester->getDisplay());
         $this->assertStringContainsString('Invalid tar header', $tester->getDisplay());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function invalidTimeoutProvider(): iterable
+    {
+        yield 'text' => ['abc'];
+        yield 'zero' => ['0'];
+        yield 'negative' => ['-1'];
+    }
+
+    /**
+     * @dataProvider invalidTimeoutProvider
+     */
+    public function testBackupCommandRejectsInvalidTimeout(string $timeout): void
+    {
+        $dockerService = $this->createMock(DockerServiceInterface::class);
+        $dockerService->expects($this->never())->method('listVolumes');
+        $dockerService->expects($this->never())->method('volumeExists');
+
+        $tester = new CommandTester(new BackupVolumesCommand(new VolumeBackupService($dockerService)));
+
+        $exitCode = $tester->execute([
+            'volumes' => ['app-data'],
+            '--timeout' => $timeout,
+        ]);
+
+        $this->assertSame(Command::FAILURE, $exitCode);
+        $this->assertStringContainsString('--timeout must be a positive integer.', $tester->getDisplay());
+    }
+
+    /**
+     * @dataProvider invalidTimeoutProvider
+     */
+    public function testRestoreCommandRejectsInvalidTimeout(string $timeout): void
+    {
+        $dockerService = $this->createMock(DockerServiceInterface::class);
+        $dockerService->expects($this->never())->method('volumeExists');
+        $dockerService->expects($this->never())->method('runContainer');
+
+        $tester = new CommandTester(new RestoreVolumesCommand(new VolumeRestoreService($dockerService)));
+
+        $exitCode = $tester->execute([
+            'archives' => ['app-data.tar.gz'],
+            '--timeout' => $timeout,
+        ]);
+
+        $this->assertSame(Command::FAILURE, $exitCode);
+        $this->assertStringContainsString('--timeout must be a positive integer.', $tester->getDisplay());
+    }
+
+    private function touchVolumeArchiveFromDockerArgs(array $dockerArgs, string $backupDir): void
+    {
+        $archiveArgument = null;
+        foreach ($dockerArgs as $argument) {
+            if (is_string($argument) && str_starts_with($argument, '/backup/')) {
+                $archiveArgument = $argument;
+
+                break;
+            }
+        }
+
+        $this->assertNotNull($archiveArgument);
+        touch($backupDir . DIRECTORY_SEPARATOR . basename((string) $archiveArgument));
+    }
+
+    private function isTemporaryArchivePath(string $actualPath, string $finalPath): bool
+    {
+        $expectedPrefix = dirname($finalPath) . DIRECTORY_SEPARATOR . '.' . basename($finalPath) . '.tmp.';
+
+        return str_starts_with($actualPath, $expectedPrefix);
     }
 }

@@ -53,6 +53,8 @@ final readonly class ImageBackupService
         $this->logger->info("Starting backup of image: {$imageReference}");
 
         try {
+            $this->ensureBackupDirectoryExists($backupDirectory);
+
             // Verify image exists
             if (!$this->dockerService->imageExists($imageReference)) {
                 throw new BackupException("Image '{$imageReference}' not found");
@@ -68,7 +70,7 @@ final readonly class ImageBackupService
             }
 
             // Perform backup using docker save
-            $this->performImageBackup($imageReference, $archivePath, $compress);
+            $this->performImageBackupAtomically($imageReference, $archivePath, $compress);
 
             $this->logger->info("Successfully backed up image: {$imageReference}");
 
@@ -88,6 +90,23 @@ final readonly class ImageBackupService
     public function getAvailableImages(): array
     {
         return $this->dockerService->listImages();
+    }
+
+    private function performImageBackupAtomically(string $imageReference, string $archivePath, bool $compress = true): void
+    {
+        $temporaryArchivePath = $this->createTemporaryArchivePath($archivePath);
+
+        try {
+            $this->performImageBackup($imageReference, $temporaryArchivePath, $compress);
+
+            if (!@rename($temporaryArchivePath, $archivePath)) {
+                throw new BackupException("Failed to move completed backup into place: {$archivePath}");
+            }
+        } finally {
+            if (file_exists($temporaryArchivePath)) {
+                @unlink($temporaryArchivePath);
+            }
+        }
     }
 
     private function performImageBackup(string $imageReference, string $archivePath, bool $compress = true): void
@@ -140,6 +159,14 @@ final readonly class ImageBackupService
         $extension = $compress ? '.tar.gz' : '.tar';
 
         return $backupDirectory . DIRECTORY_SEPARATOR . $safeFilename . $extension;
+    }
+
+    private function createTemporaryArchivePath(string $archivePath): string
+    {
+        $directory = dirname($archivePath);
+        $filename = basename($archivePath);
+
+        return $directory . DIRECTORY_SEPARATOR . '.' . $filename . '.tmp.' . getmypid() . '.' . bin2hex(random_bytes(4));
     }
 
     private function sanitizeImageReference(string $imageReference): string

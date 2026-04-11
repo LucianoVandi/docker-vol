@@ -37,7 +37,10 @@ class ImageBackupServiceTest extends TestCase
         $this->dockerService
             ->expects($this->once())
             ->method('saveImage')
-            ->with($imageReference, $expectedArchivePath)
+            ->with(
+                $imageReference,
+                $this->callback(fn (string $outputPath): bool => $this->isTemporaryArchivePath($outputPath, $expectedArchivePath))
+            )
             ->willReturnCallback(function (string $imageReference, string $outputPath) {
                 touch($outputPath);
 
@@ -81,7 +84,10 @@ class ImageBackupServiceTest extends TestCase
         $this->dockerService
             ->expects($this->once())
             ->method('saveImage')
-            ->with($imageReference, $expectedArchivePath)
+            ->with(
+                $imageReference,
+                $this->callback(fn (string $outputPath): bool => $this->isTemporaryArchivePath($outputPath, $expectedArchivePath))
+            )
             ->willReturnCallback(function (string $imageReference, string $outputPath) {
                 touch($outputPath);
 
@@ -157,6 +163,7 @@ class ImageBackupServiceTest extends TestCase
         $this->assertTrue($result->isSuccessful());
         $this->assertSame($expectedArchivePath, $result->filePath);
         $this->assertSame('tar-content', gzdecode((string) file_get_contents($expectedArchivePath)));
+        $this->assertSame([], glob($backupDir . DIRECTORY_SEPARATOR . '.*.tmp.*') ?: []);
     }
 
     public function testBackupImagesPropagatesCompressionOption(): void
@@ -175,7 +182,10 @@ class ImageBackupServiceTest extends TestCase
         $this->dockerService
             ->expects($this->once())
             ->method('saveImage')
-            ->with($imageReference, $expectedArchivePath)
+            ->with(
+                $imageReference,
+                $this->callback(fn (string $outputPath): bool => $this->isTemporaryArchivePath($outputPath, $expectedArchivePath))
+            )
             ->willReturnCallback(function (string $imageReference, string $outputPath) {
                 touch($outputPath);
 
@@ -193,5 +203,79 @@ class ImageBackupServiceTest extends TestCase
         $this->assertCount(1, $results);
         $this->assertTrue($results[0]->isSuccessful());
         $this->assertSame($expectedArchivePath, $results[0]->filePath);
+    }
+
+    public function testBackupSingleImageCreatesMissingBackupDirectory(): void
+    {
+        $imageReference = 'nginx:latest';
+        $backupDir = $this->createTempDirectory() . DIRECTORY_SEPARATOR . 'nested';
+        $expectedArchivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode($imageReference) . '.tar';
+
+        $this->dockerService
+            ->expects($this->once())
+            ->method('imageExists')
+            ->with($imageReference)
+            ->willReturn(true)
+        ;
+
+        $this->dockerService
+            ->expects($this->once())
+            ->method('saveImage')
+            ->with(
+                $imageReference,
+                $this->callback(fn (string $outputPath): bool => $this->isTemporaryArchivePath($outputPath, $expectedArchivePath))
+            )
+            ->willReturnCallback(function (string $imageReference, string $outputPath) {
+                touch($outputPath);
+
+                return $this->createMockProcess(0, 'Backup completed');
+            })
+        ;
+
+        $result = $this->backupService->backupSingleImage($imageReference, $backupDir, false);
+
+        $this->assertTrue($result->isSuccessful());
+        $this->assertFileExists($expectedArchivePath);
+    }
+
+    public function testBackupSingleImageCleansTemporaryArchiveWhenDockerFails(): void
+    {
+        $imageReference = 'nginx:latest';
+        $backupDir = $this->createTempDirectory();
+        $expectedArchivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode($imageReference) . '.tar';
+
+        $this->dockerService
+            ->expects($this->once())
+            ->method('imageExists')
+            ->with($imageReference)
+            ->willReturn(true)
+        ;
+
+        $this->dockerService
+            ->expects($this->once())
+            ->method('saveImage')
+            ->with(
+                $imageReference,
+                $this->callback(fn (string $outputPath): bool => $this->isTemporaryArchivePath($outputPath, $expectedArchivePath))
+            )
+            ->willReturnCallback(function (string $imageReference, string $outputPath) {
+                touch($outputPath);
+
+                throw new \DockerVol\Exception\DockerCommandException('Docker error');
+            })
+        ;
+
+        $result = $this->backupService->backupSingleImage($imageReference, $backupDir, false);
+
+        $this->assertTrue($result->isFailed());
+        $this->assertFileDoesNotExist($expectedArchivePath);
+        $this->assertSame([], glob($backupDir . DIRECTORY_SEPARATOR . '.*.tmp.*') ?: []);
+    }
+
+    private function isTemporaryArchivePath(string $actualPath, string $finalPath): bool
+    {
+        $expectedPrefix = dirname($finalPath) . DIRECTORY_SEPARATOR . '.' . basename($finalPath) . '.tmp.';
+
+        return str_starts_with($actualPath, $expectedPrefix);
     }
 }

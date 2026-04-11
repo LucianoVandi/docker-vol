@@ -53,6 +53,8 @@ final readonly class VolumeBackupService
         $this->logger->info("Starting backup of volume: {$volumeName}");
 
         try {
+            $this->ensureBackupDirectoryExists($backupDirectory);
+
             // Verify volume exists
             if (!$this->dockerService->volumeExists($volumeName)) {
                 throw new BackupException("Volume '{$volumeName}' not found");
@@ -68,7 +70,7 @@ final readonly class VolumeBackupService
             }
 
             // Perform backup using Docker container
-            $this->performVolumeBackup($volumeName, $archivePath, $compress);
+            $this->performVolumeBackupAtomically($volumeName, $archivePath, $compress);
 
             $this->logger->info("Successfully backed up volume: {$volumeName}");
 
@@ -88,6 +90,23 @@ final readonly class VolumeBackupService
     public function getAvailableVolumes(): array
     {
         return $this->dockerService->listVolumes();
+    }
+
+    private function performVolumeBackupAtomically(string $volumeName, string $archivePath, bool $compress = true): void
+    {
+        $temporaryArchivePath = $this->createTemporaryArchivePath($archivePath);
+
+        try {
+            $this->performVolumeBackup($volumeName, $temporaryArchivePath, $compress);
+
+            if (!@rename($temporaryArchivePath, $archivePath)) {
+                throw new BackupException("Failed to move completed backup into place: {$archivePath}");
+            }
+        } finally {
+            if (file_exists($temporaryArchivePath)) {
+                @unlink($temporaryArchivePath);
+            }
+        }
     }
 
     private function performVolumeBackup(string $volumeName, string $archivePath, bool $compress = true): void
@@ -122,6 +141,14 @@ final readonly class VolumeBackupService
         $extension = $compress ? '.tar.gz' : '.tar';
 
         return $backupDirectory . DIRECTORY_SEPARATOR . $volumeName . $extension;
+    }
+
+    private function createTemporaryArchivePath(string $archivePath): string
+    {
+        $directory = dirname($archivePath);
+        $filename = basename($archivePath);
+
+        return $directory . DIRECTORY_SEPARATOR . '.' . $filename . '.tmp.' . getmypid() . '.' . bin2hex(random_bytes(4));
     }
 
     private function ensureBackupDirectoryExists(string $backupDirectory): void
