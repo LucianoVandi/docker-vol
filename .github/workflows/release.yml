@@ -41,6 +41,9 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
+      - name: Sync VERSION with release tag
+        run: printf '%s\n' "${{ steps.version.outputs.VERSION }}" > VERSION
+
       - name: Install Box (for creating .phar)
         run: |
           curl -L https://github.com/box-project/box/releases/latest/download/box.phar -o /usr/local/bin/box
@@ -63,6 +66,7 @@ jobs:
           # Create .phar with Box
           echo "Creating .phar file with Box..."
           box compile
+          php dkvol.phar --version | grep -F "DockerVol ${{ steps.version.outputs.VERSION }}"
           
           echo "✅ File created: dkvol.phar"
 
@@ -70,10 +74,11 @@ jobs:
           if command -v phpacker >/dev/null 2>&1; then
             echo "Generating standalone executables..."
             echo "Building for all platforms..."
-            phpacker build all --src=dkvol.phar --dest=build/ || echo "⚠️  All platforms build failed"
+            phpacker build all --src=dkvol.phar --dest=build/
             echo "✅ Building standalone executables completed!"
           else
-            echo "⚠️  PHPacker not available, skipping standalone executables"
+            echo "❌ PHPacker not available"
+            exit 1
           fi
 
       - name: List generated files (debug)
@@ -137,6 +142,23 @@ jobs:
 
       - name: Verify release assets
         run: |
+          required=(
+            "dkvol-${{ steps.version.outputs.VERSION }}.phar"
+            "dkvol-linux-x64-${{ steps.version.outputs.VERSION }}"
+            "dkvol-linux-arm64-${{ steps.version.outputs.VERSION }}"
+            "dkvol-macos-x64-${{ steps.version.outputs.VERSION }}"
+            "dkvol-macos-arm64-${{ steps.version.outputs.VERSION }}"
+            "dkvol-windows-x64-${{ steps.version.outputs.VERSION }}.exe"
+            "SHA256SUMS.txt"
+          )
+
+          for asset in "${required[@]}"; do
+            if [ ! -f "release-assets/${asset}" ]; then
+              echo "❌ Missing release asset: ${asset}"
+              exit 1
+            fi
+          done
+
           if [ -d "release-assets" ] && [ "$(ls -A release-assets)" ]; then
             echo "✅ Release assets are ready:"
             ls -la release-assets/
