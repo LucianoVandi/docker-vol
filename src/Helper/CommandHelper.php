@@ -28,6 +28,23 @@ class CommandHelper
     }
 
     /**
+     * Parse a CLI option that must be a positive integer.
+     */
+    public static function parsePositiveIntegerOption(mixed $value, string $optionName): int
+    {
+        if (!is_scalar($value)) {
+            throw new \InvalidArgumentException("{$optionName} must be a positive integer.");
+        }
+
+        $normalizedValue = trim((string) $value);
+        if ($normalizedValue === '' || !ctype_digit($normalizedValue) || (int) $normalizedValue <= 0) {
+            throw new \InvalidArgumentException("{$optionName} must be a positive integer.");
+        }
+
+        return (int) $normalizedValue;
+    }
+
+    /**
      * Resolve archive paths from names and backup directory.
      * Handles both absolute and relative paths.
      *

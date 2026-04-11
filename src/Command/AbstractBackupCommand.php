@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DockerVol\Command;
 
+use DockerVol\Helper\CommandHelper;
 use DockerVol\Trait\ArgumentValidationTrait;
 use DockerVol\Trait\ListableResourceTrait;
 use DockerVol\Trait\ProgressDisplayTrait;
@@ -52,7 +53,7 @@ abstract class AbstractBackupCommand extends Command
                 'timeout',
                 null,
                 InputOption::VALUE_REQUIRED,
-                'Override Docker command timeout in seconds (default: BACKUP_TIMEOUT env or 300)'
+                'Override Docker command timeout in positive seconds (default: BACKUP_TIMEOUT env or 300)'
             )
             ->setHelp($this->getCommandHelp())
         ;
@@ -76,7 +77,13 @@ abstract class AbstractBackupCommand extends Command
 
         $timeoutOption = $input->getOption('timeout');
         if ($timeoutOption !== null) {
-            $this->applyDockerTimeout((int) $timeoutOption);
+            try {
+                $this->applyDockerTimeout(CommandHelper::parsePositiveIntegerOption($timeoutOption, '--timeout'));
+            } catch (\InvalidArgumentException $exception) {
+                $io->error($exception->getMessage());
+
+                return Command::FAILURE;
+            }
         }
 
         // Check if resources argument is provided

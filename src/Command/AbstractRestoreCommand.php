@@ -55,7 +55,7 @@ abstract class AbstractRestoreCommand extends Command
                 'timeout',
                 null,
                 InputOption::VALUE_REQUIRED,
-                'Override Docker command timeout in seconds (default: BACKUP_TIMEOUT env or 300)'
+                'Override Docker command timeout in positive seconds (default: BACKUP_TIMEOUT env or 300)'
             )
             ->addOption(
                 'deep-validate',
@@ -85,7 +85,13 @@ abstract class AbstractRestoreCommand extends Command
 
         $timeoutOption = $input->getOption('timeout');
         if ($timeoutOption !== null) {
-            $this->applyDockerTimeout((int) $timeoutOption);
+            try {
+                $this->applyDockerTimeout(CommandHelper::parsePositiveIntegerOption($timeoutOption, '--timeout'));
+            } catch (\InvalidArgumentException $exception) {
+                $io->error($exception->getMessage());
+
+                return Command::FAILURE;
+            }
         }
 
         // Check if archives argument is provided
