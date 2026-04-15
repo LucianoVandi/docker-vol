@@ -221,11 +221,11 @@ class VolumeBackupServiceTest extends TestCase
     {
         $_ENV['DOCKER_BACKUP_DEV_MODE'] = '1';
         $_ENV['CONTAINER_PROJECT_DIR'] = sys_get_temp_dir();
-        $_ENV['HOST_PROJECT_DIR'] = '/host/project';
+        $_ENV['HOST_PROJECT_DIR'] = 'C:/Users/me/project';
 
         $volumeName = 'test-volume';
         $backupDir = $this->createTempDirectory();
-        $expectedHostBackupDir = '/host/project' . substr($backupDir, strlen(sys_get_temp_dir()));
+        $expectedHostBackupDir = 'C:/Users/me/project' . substr($backupDir, strlen(sys_get_temp_dir()));
 
         try {
             $this->dockerService
@@ -239,7 +239,8 @@ class VolumeBackupServiceTest extends TestCase
                 ->with($this->callback(function (array $dockerArgs) use ($backupDir, $expectedHostBackupDir): bool {
                     $this->touchVolumeArchiveFromDockerArgs($dockerArgs, $backupDir);
 
-                    return in_array("{$expectedHostBackupDir}:/backup", $dockerArgs, true);
+                    return in_array("type=bind,source={$expectedHostBackupDir},target=/backup", $dockerArgs, true)
+                        && !in_array("{$expectedHostBackupDir}:/backup", $dockerArgs, true);
                 }))
                 ->willReturn($this->createMockProcess(0, 'Backup completed'))
             ;

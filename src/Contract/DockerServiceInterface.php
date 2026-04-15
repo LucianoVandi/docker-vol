@@ -34,5 +34,7 @@ interface DockerServiceInterface
 
     public function loadImage(string $inputPath): Process;
 
+    public function loadImageFromStream(callable $writeInput): Process;
+
     public function setTimeoutOverride(?int $seconds): void;
 }

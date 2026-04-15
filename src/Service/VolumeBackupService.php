@@ -123,8 +123,8 @@ final readonly class VolumeBackupService
 
         $dockerArgs = [
             '--rm',
-            '-v', "{$volumeName}:/volume:ro",
-            '-v', "{$hostBackupDir}:/backup",
+            '--mount', "type=volume,source={$volumeName},target=/volume,readonly",
+            '--mount', "type=bind,source={$hostBackupDir},target=/backup",
             'alpine',
             ...$tarCommand,
         ];

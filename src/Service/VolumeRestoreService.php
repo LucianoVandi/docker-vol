@@ -174,7 +174,7 @@ final readonly class VolumeRestoreService
 
         $this->dockerService->runContainer([
             '--rm',
-            '-v', "{$volumeName}:/volume",
+            '--mount', "type=volume,source={$volumeName},target=/volume",
             'alpine',
             'sh', '-c', 'rm -rf /volume/* /volume/.[!.]* /volume/..?*',
         ]);
@@ -197,8 +197,8 @@ final readonly class VolumeRestoreService
 
         $dockerArgs = [
             '--rm',
-            '-v', "{$volumeName}:/volume",
-            '-v', "{$hostBackupDir}:/backup:ro",
+            '--mount', "type=volume,source={$volumeName},target=/volume",
+            '--mount', "type=bind,source={$hostBackupDir},target=/backup,readonly",
             'alpine',
             ...$tarCommand,
         ];
@@ -214,7 +214,7 @@ final readonly class VolumeRestoreService
         try {
             $process = $this->dockerService->runContainer([
                 '--rm',
-                '-v', "{$volumeName}:/volume:ro",
+                '--mount', "type=volume,source={$volumeName},target=/volume,readonly",
                 'alpine',
                 'du', '-sb', '/volume',
             ]);
@@ -240,6 +240,13 @@ final readonly class VolumeRestoreService
         if ($failureReason !== null) {
             throw new RestoreException(
                 'Invalid archive format: ' . basename($archivePath) . ". {$failureReason}"
+            );
+        }
+
+        $unsafeEntryReason = ArchiveValidator::validateEntriesForExtraction($archivePath);
+        if ($unsafeEntryReason !== null) {
+            throw new RestoreException(
+                'Unsafe archive contents: ' . basename($archivePath) . ". {$unsafeEntryReason}"
             );
         }
 
@@ -279,7 +286,7 @@ final readonly class VolumeRestoreService
 
             $process = $this->dockerService->runContainer([
                 '--rm',
-                '-v', "{$hostBackupDir}:/backup:ro",
+                '--mount', "type=bind,source={$hostBackupDir},target=/backup,readonly",
                 'alpine',
                 ...$testCommand,
             ]);

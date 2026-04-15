@@ -49,4 +49,62 @@ class ArchiveValidatorTest extends TestCase
         $this->assertTrue($result['successful']);
         $this->assertStringContainsString('file.txt', $result['output']);
     }
+
+    public function testEntryValidationRejectsParentDirectoryTraversal(): void
+    {
+        $archivePath = $this->createTempTarArchive('.tar', '../evil.txt');
+
+        $this->assertStringContainsString(
+            'parent directory traversal',
+            (string) ArchiveValidator::validateEntriesForExtraction($archivePath)
+        );
+    }
+
+    public function testEntryValidationRejectsAbsolutePaths(): void
+    {
+        $archivePath = $this->createTempTarArchive('.tar', '/absolute.txt');
+
+        $this->assertStringContainsString(
+            'absolute path',
+            (string) ArchiveValidator::validateEntriesForExtraction($archivePath)
+        );
+    }
+
+    public function testEntryValidationRejectsNullBytesInNames(): void
+    {
+        $archivePath = $this->createTempTarArchive('.tar', "bad\0name.txt");
+
+        $this->assertStringContainsString(
+            'null byte',
+            (string) ArchiveValidator::validateEntriesForExtraction($archivePath)
+        );
+    }
+
+    public function testEntryValidationRejectsSymlinks(): void
+    {
+        $archivePath = $this->createTempFile($this->createTarContent('linked', '', '2'), '.tar');
+
+        $this->assertStringContainsString(
+            'unsafe symlink',
+            (string) ArchiveValidator::validateEntriesForExtraction($archivePath)
+        );
+    }
+
+    public function testEntryValidationRejectsHardlinks(): void
+    {
+        $archivePath = $this->createTempFile($this->createTarContent('linked', '', '1'), '.tar');
+
+        $this->assertStringContainsString(
+            'unsafe hardlink',
+            (string) ArchiveValidator::validateEntriesForExtraction($archivePath)
+        );
+    }
+
+    public function testReadFileFromArchiveReadsManifestFromGzipArchive(): void
+    {
+        $manifest = '[{"RepoTags":["nginx:latest"]}]';
+        $archivePath = $this->createTempFile(gzencode($this->createTarContent('manifest.json', $manifest)), '.tar.gz');
+
+        $this->assertSame($manifest, ArchiveValidator::readFileFromArchive($archivePath, 'manifest.json'));
+    }
 }

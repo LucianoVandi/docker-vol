@@ -99,7 +99,31 @@ abstract class TestCase extends PHPUnitTestCase
         return $tempDir;
     }
 
-    protected function createTarContent(string $fileName, string $content): string
+    /**
+     * @param array<int, array{name: string, content?: string, type?: string}> $entries
+     */
+    protected function createTarContentFromEntries(array $entries): string
+    {
+        $tarContent = '';
+        foreach ($entries as $entry) {
+            $tarContent .= $this->createTarEntryContent(
+                $entry['name'],
+                $entry['content'] ?? '',
+                $entry['type'] ?? '0'
+            );
+        }
+
+        return $tarContent . str_repeat("\0", 1024);
+    }
+
+    protected function createTarContent(string $fileName, string $content, string $type = '0'): string
+    {
+        return $this->createTarContentFromEntries([
+            ['name' => $fileName, 'content' => $content, 'type' => $type],
+        ]);
+    }
+
+    private function createTarEntryContent(string $fileName, string $content, string $type): string
     {
         $header = str_pad($fileName, 100, "\0");
         $header .= sprintf('%07o', 0644) . "\0";
@@ -108,7 +132,7 @@ abstract class TestCase extends PHPUnitTestCase
         $header .= sprintf('%011o', strlen($content)) . "\0";
         $header .= sprintf('%011o', time()) . "\0";
         $header .= str_repeat(' ', 8);
-        $header .= '0';
+        $header .= $type;
         $header .= str_repeat("\0", 100);
         $header .= "ustar\0";
         $header .= '00';
@@ -127,7 +151,7 @@ abstract class TestCase extends PHPUnitTestCase
         $header = substr_replace($header, sprintf('%06o', $checksum) . "\0 ", 148, 8);
         $padding = str_repeat("\0", (512 - strlen($content) % 512) % 512);
 
-        return $header . $content . $padding . str_repeat("\0", 1024);
+        return $header . $content . $padding;
     }
 
     /**

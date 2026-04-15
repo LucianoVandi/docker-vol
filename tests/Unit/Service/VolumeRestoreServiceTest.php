@@ -164,6 +164,68 @@ class VolumeRestoreServiceTest extends TestCase
         $method->invoke($this->restoreService, $archivePath);
     }
 
+    public function testValidateArchiveThrowsRestoreExceptionForUnsafeTarEntry(): void
+    {
+        $archivePath = $this->createTempTarArchive('.tar', '../evil.txt');
+        $method = new \ReflectionMethod(VolumeRestoreService::class, 'validateArchive');
+        $method->setAccessible(true);
+
+        $this->expectException(RestoreException::class);
+        $this->expectExceptionMessage('Unsafe archive contents');
+
+        $method->invoke($this->restoreService, $archivePath);
+    }
+
+    public function testRestoreUsesPortableBindMountForWindowsStyleHostPath(): void
+    {
+        $_ENV['DOCKER_BACKUP_DEV_MODE'] = '1';
+        $_ENV['CONTAINER_PROJECT_DIR'] = sys_get_temp_dir();
+        $_ENV['HOST_PROJECT_DIR'] = 'C:/Users/me/project';
+
+        $archivePath = $this->createTempTarArchive('.tar.gz');
+        $volumeName = basename($archivePath, '.tar.gz');
+        $expectedHostBackupDir = 'C:/Users/me/project' . substr(dirname($archivePath), strlen(sys_get_temp_dir()));
+
+        try {
+            $this->dockerService
+                ->method('volumeExists')
+                ->willReturn(false)
+            ;
+
+            $this->dockerService
+                ->method('createVolume')
+                ->willReturn($this->createMockProcess(0, $volumeName))
+            ;
+
+            $callCount = 0;
+            $this->dockerService
+                ->expects($this->exactly(2))
+                ->method('runContainer')
+                ->willReturnCallback(function (array $dockerArgs) use (&$callCount, $expectedHostBackupDir) {
+                    $callCount++;
+
+                    if ($callCount === 1) {
+                        $this->assertContains(
+                            "type=bind,source={$expectedHostBackupDir},target=/backup,readonly",
+                            $dockerArgs
+                        );
+                        $this->assertNotContains("{$expectedHostBackupDir}:/backup:ro", $dockerArgs);
+                    }
+
+                    return $callCount === 2
+                        ? $this->createMockProcess(0, "12\t/volume\n")
+                        : $this->createMockProcess(0, 'ok');
+                })
+            ;
+
+            $result = $this->restoreService->restoreSingleVolume($archivePath);
+
+            $this->assertTrue($result->isSuccessful());
+        } finally {
+            unset($_ENV['DOCKER_BACKUP_DEV_MODE'], $_ENV['CONTAINER_PROJECT_DIR'], $_ENV['HOST_PROJECT_DIR']);
+        }
+    }
+
     public function testCreateVolumeThrowsRestoreExceptionWhenDockerCreateFails(): void
     {
         $this->dockerService

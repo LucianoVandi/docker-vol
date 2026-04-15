@@ -181,7 +181,7 @@ final readonly class ImageRestoreService
 
             $process = $this->dockerService->runContainer([
                 '--rm',
-                '-v', "{$hostBackupDir}:/backup:ro",
+                '--mount', "type=bind,source={$hostBackupDir},target=/backup,readonly",
                 'alpine',
                 ...$testCommand,
             ]);
@@ -222,12 +222,21 @@ final readonly class ImageRestoreService
 
     private function extractImageInfoFromArchive(string $archivePath): array
     {
-        // For now, extract info from filename since full archive inspection is complex
         $fileName = basename($archivePath);
         $imageName = $this->extractImageNameFromFilename($fileName);
+        $manifest = $this->readManifestFromArchive($archivePath);
+        $repoTags = $this->extractRepoTagsFromManifest($manifest);
+        if ($repoTags !== []) {
+            return [
+                'name' => $repoTags[0],
+                'repoTags' => $repoTags,
+                'archive' => $archivePath,
+            ];
+        }
 
         return [
             'name' => $imageName,
+            'repoTags' => [$imageName],
             'archive' => $archivePath,
         ];
     }
@@ -274,12 +283,16 @@ final readonly class ImageRestoreService
 
     private function imageAlreadyExists(array $imageInfo): bool
     {
-        // For simplicity, we'll check if any image with similar name exists
-        // In a real implementation, you might want to parse the tar to get exact image info
-        $imageName = $imageInfo['name'];
+        $repoTags = $imageInfo['repoTags'] ?? [$imageInfo['name']];
 
         try {
-            return $this->dockerService->imageExists($imageName);
+            foreach ($repoTags as $repoTag) {
+                if (is_string($repoTag) && $repoTag !== '' && $this->dockerService->imageExists($repoTag)) {
+                    return true;
+                }
+            }
+
+            return false;
         } catch (\Exception) {
             // If we can't check, assume it doesn't exist
             return false;
@@ -299,56 +312,67 @@ final readonly class ImageRestoreService
 
     private function performCompressedImageRestore(string $archivePath): void
     {
-        // Decompress using PHP gzip functions, then use docker load
-        $tempFile = tempnam(sys_get_temp_dir(), 'image_restore_');
-
-        try {
-            // Step 1: Decompress using PHP gzip
-            $this->decompressWithPhpGzip($archivePath, $tempFile);
-
-            // Step 2: Load the decompressed tar with docker load
-            $this->dockerService->loadImage($tempFile);
-
-            $this->logger->info('Successfully restored compressed image: ' . basename($archivePath));
-        } finally {
-            // Clean up temporary file
-            if (file_exists($tempFile)) {
-                @unlink($tempFile);
-            }
-        }
-    }
-
-    private function decompressWithPhpGzip(string $inputPath, string $outputPath): void
-    {
-        $inputHandle = gzopen($inputPath, 'rb');
-        if (!$inputHandle) {
+        $inputHandle = gzopen($archivePath, 'rb');
+        if ($inputHandle === false) {
             throw new RestoreException('Failed to open compressed archive for reading');
         }
 
-        $outputHandle = fopen($outputPath, 'wb');
-        if (!$outputHandle) {
-            gzclose($inputHandle);
-
-            throw new RestoreException('Failed to create temporary file for decompression');
-        }
-
         try {
-            // Decompress in chunks to handle large files efficiently
-            while (!gzeof($inputHandle)) {
-                $chunk = gzread($inputHandle, 1024 * 1024);
-                if ($chunk === false) {
-                    throw new RestoreException('Failed to read compressed data');
-                }
+            $this->dockerService->loadImageFromStream(function (callable $write) use ($inputHandle): void {
+                while (!gzeof($inputHandle)) {
+                    $chunk = gzread($inputHandle, 1024 * 1024);
+                    if ($chunk === false) {
+                        throw new RestoreException('Failed to read compressed data');
+                    }
 
-                if (fwrite($outputHandle, $chunk) === false) {
-                    throw new RestoreException('Failed to write decompressed data');
+                    $write($chunk);
                 }
-            }
+            });
 
-            $this->logger->info('Successfully decompressed archive to temporary file');
+            $this->logger->info('Successfully restored compressed image: ' . basename($archivePath));
         } finally {
             gzclose($inputHandle);
-            fclose($outputHandle);
         }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function readManifestFromArchive(string $archivePath): array
+    {
+        $manifestJson = ArchiveValidator::readFileFromArchive($archivePath, 'manifest.json');
+        if ($manifestJson === null) {
+            return [];
+        }
+
+        $manifest = json_decode($manifestJson, true);
+        if (!is_array($manifest)) {
+            return [];
+        }
+
+        return $manifest;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $manifest
+     *
+     * @return string[]
+     */
+    private function extractRepoTagsFromManifest(array $manifest): array
+    {
+        $repoTags = [];
+        foreach ($manifest as $entry) {
+            if (!isset($entry['RepoTags']) || !is_array($entry['RepoTags'])) {
+                continue;
+            }
+
+            foreach ($entry['RepoTags'] as $repoTag) {
+                if (is_string($repoTag) && $repoTag !== '<none>:<none>' && $repoTag !== '') {
+                    $repoTags[] = $repoTag;
+                }
+            }
+        }
+
+        return array_values(array_unique($repoTags));
     }
 }

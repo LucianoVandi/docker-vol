@@ -9,6 +9,7 @@ use DockerVol\Exception\DockerCommandException;
 use DockerVol\ValueObject\DockerImage;
 use DockerVol\ValueObject\DockerVolume;
 use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\InputStream;
 use Symfony\Component\Process\Process;
 
 class DockerService implements DockerServiceInterface
@@ -167,6 +168,44 @@ class DockerService implements DockerServiceInterface
     public function loadImage(string $inputPath): Process
     {
         return $this->runDockerCommand(['load', '-i', $inputPath]);
+    }
+
+    public function loadImageFromStream(callable $writeInput): Process
+    {
+        $input = new InputStream();
+        $process = $this->createDockerProcess(['load']);
+        $process->setInput($input);
+        $process->start();
+        $errorOutput = '';
+
+        try {
+            $writeInput(static function (string $chunk) use ($input): void {
+                if ($chunk !== '') {
+                    $input->write($chunk);
+                }
+            });
+            $input->close();
+
+            foreach ($process as $type => $chunk) {
+                if ($type === Process::ERR) {
+                    $errorOutput .= $chunk;
+                }
+            }
+        } catch (\Throwable $exception) {
+            $input->close();
+            $process->stop();
+
+            throw $exception;
+        }
+
+        if (!$process->isSuccessful()) {
+            throw new DockerCommandException(
+                sprintf('Docker command failed: %s', trim($errorOutput)),
+                $process->getExitCode() ?? 1
+            );
+        }
+
+        return $process;
     }
 
     public function setTimeoutOverride(?int $seconds): void
