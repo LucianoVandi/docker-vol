@@ -35,7 +35,7 @@ final class RestoreVolumesCommand extends AbstractRestoreCommand
 
     protected function getOverwriteOptionDescription(): string
     {
-        return 'Overwrite existing volumes';
+        return 'Clean existing volumes before extracting archives';
     }
 
     protected function getCommandHelp(): string
@@ -58,7 +58,9 @@ The <info>%command.name%</info> command restores Docker volumes from backup arch
   <info>php %command.full_name% --list</info>
 
 The command extracts compressed or uncompressed tar archives to Docker volumes.
-Each volume is restored using a temporary Alpine container to ensure consistency.
+The target volume name is derived from the archive filename.
+Existing volumes are skipped unless --overwrite is used. With --overwrite, the target
+volume is cleaned before the archive is extracted into it.
 HELP;
     }
 
@@ -153,7 +155,7 @@ HELP;
 
     protected function getOverwriteWarningMessage(): string
     {
-        return 'Overwrite mode enabled - existing volumes will be replaced';
+        return 'Overwrite mode enabled - existing volumes will be cleaned before restore';
     }
 
     protected function getManyArchivesThreshold(): int

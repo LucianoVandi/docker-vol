@@ -60,7 +60,9 @@ The <info>%command.name%</info> command creates backups of Docker volumes.
   <info>php %command.full_name% --list</info>
 
 The command creates compressed tar.gz archives of volume contents.
-Each volume is backed up using a temporary Alpine container to ensure consistency.
+Each volume is backed up using a temporary Alpine container. Running writers are not paused,
+so stop containers or use an application-level dump when consistency matters.
+If the target archive already exists, the backup is skipped instead of overwritten.
 HELP;
     }
 

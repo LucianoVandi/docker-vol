@@ -40,3 +40,17 @@ jobs:
 
       - name: Run test suite
         run: vendor/bin/phpunit --no-coverage
+
+      - name: Install Box
+        if: matrix.php == '8.4'
+        run: |
+          curl -L https://github.com/box-project/box/releases/latest/download/box.phar -o /usr/local/bin/box
+          chmod +x /usr/local/bin/box
+
+      - name: Smoke test PHAR artifact
+        if: matrix.php == '8.4'
+        run: |
+          box compile
+          test -f dkvol.phar
+          php dkvol.phar --version
+          php dkvol.phar --help

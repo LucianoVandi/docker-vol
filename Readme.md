@@ -50,6 +50,11 @@ php dkvol-${VERSION}.phar --help
 - **For .phar file**: PHP 8.2+ + Docker CLI access
 - Access to Docker socket (`/var/run/docker.sock`)
 
+Standalone executables and `.phar` archives are distributed for multiple operating systems. Docker operations
+still depend on the local Docker CLI, Docker daemon availability, filesystem permissions, and bind mount behavior
+of the host environment. Linux and macOS are the primary operational targets; Windows binaries are provided, but
+volume backup and restore should be validated in your own Docker Desktop or CI environment before relying on them.
+
 ## Usage
 
 ### Volume Operations
@@ -143,6 +148,27 @@ decoded on a best-effort basis for compatibility.
 `--no-compression` creates `.tar` archives instead of the default `.tar.gz` archives. `--timeout` takes
 precedence over `BACKUP_TIMEOUT`; if neither is set, Docker commands use a 300 second timeout.
 
+## Backup Semantics and Limitations
+
+Volume backups archive the current contents of the Docker volume through a temporary Alpine container. They do not
+freeze running containers or create storage-level snapshots. If a container is writing to a volume while the backup
+runs, the archive can reflect a point-in-time mix of files. Stop the writer, use an application-level dump, or use a
+storage snapshot when consistency matters.
+
+Volume restore names are derived from the archive filename. For example, `postgres-data.tar.gz` restores into a
+volume named `postgres-data`. Image restore uses the Docker image manifest when available, so renamed image archives
+can still be matched by their `RepoTags`.
+
+Backup commands skip work when the target archive already exists. Choose a new output directory or remove the old
+archive when you want to regenerate a backup with the same name.
+
+Restore commands skip existing volumes and images by default. With `restore:volumes --overwrite`, DockerVol first
+cleans the target volume and then extracts the archive into it. With `restore:images --overwrite`, DockerVol runs
+`docker load` even if the image tag already exists.
+
+Large backups can exceed the default Docker command timeout of 300 seconds. Use `--timeout=<seconds>` or set
+`BACKUP_TIMEOUT` for slow disks, large images, remote Docker contexts, or heavily compressed archives.
+
 ## Development Setup
 
 ### Prerequisites
@@ -205,7 +231,7 @@ make build-standalone   # Create standalone executables
 - **Services**: Business logic for backup/restore operations
 - **Docker Integration**: Native Docker CLI integration
 - **File System**: Efficient handling of large archives
-- **Cross-Platform**: Standalone executables for all major platforms
+- **Portable packaging**: `.phar` and standalone executable builds for common platforms
 
 ### Supported Archive Formats
 
