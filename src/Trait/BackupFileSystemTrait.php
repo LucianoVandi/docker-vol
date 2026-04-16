@@ -16,7 +16,7 @@ trait BackupFileSystemTrait
      */
     private function getHostPath(string $containerPath): string
     {
-        if (!$this->envFlagEnabled('DOCKER_BACKUP_DEV_MODE')) {
+        if (!$this->envFlagEnabled('DOCKERVOL_DEV_MODE')) {
             return $containerPath;
         }
 

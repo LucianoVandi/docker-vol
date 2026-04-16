@@ -1,6 +1,6 @@
 # DockerVol — Portable backup & restore for Docker volumes
 
-[![codecov](https://codecov.io/gh/LucianoVandi/docker-backup-cli/branch/main/graph/badge.svg)](https://codecov.io/gh/LucianoVandi/docker-backup-cli)
+[![codecov](https://codecov.io/gh/LucianoVandi/docker-vol/branch/main/graph/badge.svg)](https://codecov.io/gh/LucianoVandi/docker-vol)
 
 A command-line utility for backing up and restoring Docker resources (volumes and images).
 
@@ -8,19 +8,19 @@ A command-line utility for backing up and restoring Docker resources (volumes an
 
 ### Download Prebuilt Binaries
 
-Download the latest release from [GitHub Releases](https://github.com/LucianoVandi/docker-backup-cli/releases):
+Download the latest release from [GitHub Releases](https://github.com/LucianoVandi/docker-vol/releases):
 Set `VERSION` to the release tag you want to install, for example `v1.2.3`.
 
 ```bash
 VERSION=vX.Y.Z
 
 # Linux x64
-wget https://github.com/LucianoVandi/docker-backup-cli/releases/download/${VERSION}/dkvol-linux-x64-${VERSION}
+wget https://github.com/LucianoVandi/docker-vol/releases/download/${VERSION}/dkvol-linux-x64-${VERSION}
 chmod +x dkvol-linux-x64-${VERSION}
 ./dkvol-linux-x64-${VERSION} --help
 
 # macOS x64
-wget https://github.com/LucianoVandi/docker-backup-cli/releases/download/${VERSION}/dkvol-macos-x64-${VERSION}
+wget https://github.com/LucianoVandi/docker-vol/releases/download/${VERSION}/dkvol-macos-x64-${VERSION}
 chmod +x dkvol-macos-x64-${VERSION}
 ./dkvol-macos-x64-${VERSION} --help
 
@@ -34,7 +34,7 @@ chmod +x dkvol-macos-x64-${VERSION}
 VERSION=vX.Y.Z
 
 # Download .phar file
-wget https://github.com/LucianoVandi/docker-backup-cli/releases/download/${VERSION}/dkvol-${VERSION}.phar
+wget https://github.com/LucianoVandi/docker-vol/releases/download/${VERSION}/dkvol-${VERSION}.phar
 
 # Run with PHP
 php dkvol-${VERSION}.phar --help
@@ -188,8 +188,8 @@ archives that do not have this metadata.
 
 ```bash
 # Clone the repository
-git clone https://github.com/LucianoVandi/docker-backup-cli
-cd docker-backup-cli
+git clone https://github.com/LucianoVandi/docker-vol
+cd docker-vol
 
 # Build development environment
 make build
@@ -326,7 +326,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/LucianoVandi/docker-backup-cli/issues)
+- **Issues**: [GitHub Issues](https://github.com/LucianoVandi/docker-vol/issues)
 - **Documentation**: This README and command help (`--help`)
 
 ## Acknowledgments

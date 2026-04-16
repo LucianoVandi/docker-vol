@@ -1,8 +1,8 @@
 services:
-  docker-backup-dev:
+  docker-vol-dev:
     build: .
-    image: docker-backup-dev:v1.0.0
-    container_name: docker-backup-dev
+    image: docker-vol-dev:v1.0.0
+    container_name: docker-vol-dev
     volumes:
       # Mount source code for development
       - .:/app
@@ -17,7 +17,7 @@ services:
     working_dir: /app
     environment:
       - COMPOSER_CACHE_DIR=/root/.composer
-      - DOCKER_BACKUP_DEV_MODE=1
+      - DOCKERVOL_DEV_MODE=1
       # Path of the project on the host for Docker-in-Docker volume mapping
       - HOST_PROJECT_DIR=${PWD}
       # Path of the project inside this development container

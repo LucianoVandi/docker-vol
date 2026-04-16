@@ -51,7 +51,7 @@ abstract class TestCase extends PHPUnitTestCase
      */
     protected function createTempFile(string $content = '', ?string $suffix = null): string
     {
-        $tempFile = tempnam(sys_get_temp_dir(), 'dockerbackup_test_');
+        $tempFile = tempnam(sys_get_temp_dir(), 'dockervol_test');
 
         if ($suffix !== null) {
             $newTempFile = $tempFile . $suffix;
@@ -90,7 +90,7 @@ abstract class TestCase extends PHPUnitTestCase
     /**
      * Helper to create a temporary directory
      */
-    protected function createTempDirectory(string $prefix = 'dockerbackup_test_'): string
+    protected function createTempDirectory(string $prefix = 'dockervol_test'): string
     {
         $tempDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . uniqid($prefix, true);
         mkdir($tempDir, 0755, true);

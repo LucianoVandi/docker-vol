@@ -219,7 +219,7 @@ class VolumeBackupServiceTest extends TestCase
 
     public function testBackupMapsContainerPathFromConfiguredProjectDirectories(): void
     {
-        $_ENV['DOCKER_BACKUP_DEV_MODE'] = '1';
+        $_ENV['DOCKERVOL_DEV_MODE'] = '1';
         $_ENV['CONTAINER_PROJECT_DIR'] = sys_get_temp_dir();
         $_ENV['HOST_PROJECT_DIR'] = 'C:/Users/me/project';
 
@@ -249,7 +249,7 @@ class VolumeBackupServiceTest extends TestCase
 
             $this->assertTrue($result->isSuccessful());
         } finally {
-            unset($_ENV['DOCKER_BACKUP_DEV_MODE'], $_ENV['CONTAINER_PROJECT_DIR'], $_ENV['HOST_PROJECT_DIR']);
+            unset($_ENV['DOCKERVOL_DEV_MODE'], $_ENV['CONTAINER_PROJECT_DIR'], $_ENV['HOST_PROJECT_DIR']);
         }
     }
 
