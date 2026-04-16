@@ -6,6 +6,9 @@ namespace DockerVol\Service;
 
 use DockerVol\Contract\DockerServiceInterface;
 use DockerVol\Exception\BackupException;
+use DockerVol\Helper\ArchiveMetadata;
+use DockerVol\Helper\ArchiveNamer;
+use DockerVol\Helper\DockerHelperImage;
 use DockerVol\Trait\BackupFileSystemTrait;
 use DockerVol\ValueObject\BackupResult;
 use DockerVol\ValueObject\DockerVolume;
@@ -102,6 +105,11 @@ final readonly class VolumeBackupService
             if (!@rename($temporaryArchivePath, $archivePath)) {
                 throw new BackupException("Failed to move completed backup into place: {$archivePath}");
             }
+
+            ArchiveMetadata::writeSidecar($archivePath, [
+                'source_type' => 'volume',
+                'source' => $volumeName,
+            ]);
         } finally {
             if (file_exists($temporaryArchivePath)) {
                 @unlink($temporaryArchivePath);
@@ -125,7 +133,7 @@ final readonly class VolumeBackupService
             '--rm',
             '--mount', "type=volume,source={$volumeName},target=/volume,readonly",
             '--mount', "type=bind,source={$hostBackupDir},target=/backup",
-            'alpine',
+            DockerHelperImage::name(),
             ...$tarCommand,
         ];
 
@@ -138,9 +146,7 @@ final readonly class VolumeBackupService
 
     private function getArchivePath(string $volumeName, string $backupDirectory, bool $compress = true): string
     {
-        $extension = $compress ? '.tar.gz' : '.tar';
-
-        return $backupDirectory . DIRECTORY_SEPARATOR . $volumeName . $extension;
+        return ArchiveNamer::volumeArchivePath($volumeName, $backupDirectory, $compress);
     }
 
     private function createTemporaryArchivePath(string $archivePath): string

@@ -121,6 +121,6 @@ class CommandHelper
      */
     public static function getArchiveExtension(bool $compress): string
     {
-        return $compress ? '.tar.gz' : '.tar';
+        return ArchiveNamer::extension($compress);
     }
 }

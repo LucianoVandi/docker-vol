@@ -6,6 +6,8 @@ namespace DockerVol\Service;
 
 use DockerVol\Contract\DockerServiceInterface;
 use DockerVol\Exception\BackupException;
+use DockerVol\Helper\ArchiveMetadata;
+use DockerVol\Helper\ArchiveNamer;
 use DockerVol\Trait\BackupFileSystemTrait;
 use DockerVol\ValueObject\DockerImage;
 use DockerVol\ValueObject\ImageBackupResult;
@@ -102,6 +104,11 @@ final readonly class ImageBackupService
             if (!@rename($temporaryArchivePath, $archivePath)) {
                 throw new BackupException("Failed to move completed backup into place: {$archivePath}");
             }
+
+            ArchiveMetadata::writeSidecar($archivePath, [
+                'source_type' => 'image',
+                'source' => $imageReference,
+            ]);
         } finally {
             if (file_exists($temporaryArchivePath)) {
                 @unlink($temporaryArchivePath);
@@ -154,11 +161,7 @@ final readonly class ImageBackupService
 
     private function getArchivePath(string $imageReference, string $backupDirectory, bool $compress = true): string
     {
-        // Convert image reference to safe filename
-        $safeFilename = $this->sanitizeImageReference($imageReference);
-        $extension = $compress ? '.tar.gz' : '.tar';
-
-        return $backupDirectory . DIRECTORY_SEPARATOR . $safeFilename . $extension;
+        return ArchiveNamer::imageArchivePath($imageReference, $backupDirectory, $compress);
     }
 
     private function createTemporaryArchivePath(string $archivePath): string
@@ -167,11 +170,6 @@ final readonly class ImageBackupService
         $filename = basename($archivePath);
 
         return $directory . DIRECTORY_SEPARATOR . '.' . $filename . '.tmp.' . getmypid() . '.' . bin2hex(random_bytes(4));
-    }
-
-    private function sanitizeImageReference(string $imageReference): string
-    {
-        return rawurlencode($imageReference);
     }
 
     private function ensureBackupDirectoryExists(string $backupDirectory): void

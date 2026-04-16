@@ -41,7 +41,7 @@ final class ArchiveValidator
             return 'Archive file is empty';
         }
 
-        if (str_ends_with($archivePath, '.tar.gz')) {
+        if (ArchiveNamer::isCompressed($archivePath)) {
             return self::hasValidGzipHeader($archivePath) ? null : 'Invalid gzip header';
         }
 
@@ -62,7 +62,7 @@ final class ArchiveValidator
             ];
         }
 
-        $listFlag = str_ends_with($archivePath, '.tar.gz') ? 'tzf' : 'tf';
+        $listFlag = ArchiveNamer::isCompressed($archivePath) ? 'tzf' : 'tf';
         $process = new Process(['tar', $listFlag, $archivePath]);
         $process->setTimeout(60);
         $process->run();
@@ -120,7 +120,7 @@ final class ArchiveValidator
 
     public static function hasValidArchiveExtension(string $archivePath): bool
     {
-        return str_ends_with($archivePath, '.tar') || str_ends_with($archivePath, '.tar.gz');
+        return ArchiveNamer::hasValidExtension($archivePath);
     }
 
     private static function hasValidGzipHeader(string $archivePath): bool
@@ -209,7 +209,7 @@ final class ArchiveValidator
 
         try {
             while (true) {
-                $header = self::readBytes($handle, self::TAR_BLOCK_SIZE, str_ends_with($archivePath, '.tar.gz'));
+                $header = self::readBytes($handle, self::TAR_BLOCK_SIZE, ArchiveNamer::isCompressed($archivePath));
                 if ($header === '') {
                     break;
                 }
@@ -228,7 +228,7 @@ final class ArchiveValidator
                 $content = null;
                 $readContent = function () use ($handle, $size, $archivePath, &$content): string {
                     if ($content === null) {
-                        $content = self::readBytes($handle, $size, str_ends_with($archivePath, '.tar.gz'));
+                        $content = self::readBytes($handle, $size, ArchiveNamer::isCompressed($archivePath));
                     }
 
                     return $content;
@@ -237,17 +237,17 @@ final class ArchiveValidator
                 $shouldContinue = $onEntry($name, $type, $size, $readContent);
 
                 if ($content === null) {
-                    self::skipBytes($handle, $size, str_ends_with($archivePath, '.tar.gz'));
+                    self::skipBytes($handle, $size, ArchiveNamer::isCompressed($archivePath));
                 }
 
-                self::skipPadding($handle, $size, str_ends_with($archivePath, '.tar.gz'));
+                self::skipPadding($handle, $size, ArchiveNamer::isCompressed($archivePath));
 
                 if (!$shouldContinue) {
                     break;
                 }
             }
         } finally {
-            str_ends_with($archivePath, '.tar.gz') ? gzclose($handle) : fclose($handle);
+            ArchiveNamer::isCompressed($archivePath) ? gzclose($handle) : fclose($handle);
         }
     }
 
@@ -256,7 +256,7 @@ final class ArchiveValidator
      */
     private static function openArchiveForReading(string $archivePath)
     {
-        return str_ends_with($archivePath, '.tar.gz') ? gzopen($archivePath, 'rb') : fopen($archivePath, 'rb');
+        return ArchiveNamer::isCompressed($archivePath) ? gzopen($archivePath, 'rb') : fopen($archivePath, 'rb');
     }
 
     /**

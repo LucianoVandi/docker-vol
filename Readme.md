@@ -169,6 +169,14 @@ cleans the target volume and then extracts the archive into it. With `restore:im
 Large backups can exceed the default Docker command timeout of 300 seconds. Use `--timeout=<seconds>` or set
 `BACKUP_TIMEOUT` for slow disks, large images, remote Docker contexts, or heavily compressed archives.
 
+Volume backup and restore operations use a small helper container for tar and size checks. The default helper image is
+`alpine:3.20`; set `DOCKERVOL_HELPER_IMAGE` to use a different pinned image. Pinning keeps behavior reproducible, while
+updating the value deliberately lets you pick up base image security updates on your own schedule.
+
+Backups also write a best-effort JSON sidecar next to each archive, for example `postgres-data.tar.gz.json`. The sidecar
+contains source resource, compression, tool version, creation time, and archive checksum. Restore remains compatible with
+archives that do not have this metadata.
+
 ## Development Setup
 
 ### Prerequisites

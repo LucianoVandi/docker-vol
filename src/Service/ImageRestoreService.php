@@ -6,7 +6,9 @@ namespace DockerVol\Service;
 
 use DockerVol\Contract\DockerServiceInterface;
 use DockerVol\Exception\RestoreException;
-use DockerVol\Helper\ArchiveValidator;
+use DockerVol\Helper\ArchiveInspector;
+use DockerVol\Helper\ArchiveNamer;
+use DockerVol\Helper\DockerHelperImage;
 use DockerVol\Trait\BackupFileSystemTrait;
 use DockerVol\ValueObject\ImageRestoreResult;
 use Psr\Log\LoggerInterface;
@@ -107,7 +109,7 @@ final readonly class ImageRestoreService
         }
 
         $backups = [];
-        $files = glob($backupDirectory . '/*.{tar,tar.gz}', GLOB_BRACE);
+        $files = glob($backupDirectory . '/' . ArchiveNamer::archiveGlob(), GLOB_BRACE);
 
         foreach ($files ?: [] as $filePath) {
             if (!is_file($filePath)) {
@@ -115,10 +117,10 @@ final readonly class ImageRestoreService
             }
 
             $fileName = basename($filePath);
-            $compressed = str_ends_with($filePath, '.tar.gz');
+            $compressed = ArchiveNamer::isCompressed($filePath);
 
             // Extract original image name from filename
-            $imageName = $this->extractImageNameFromFilename($fileName);
+            $imageName = ArchiveNamer::imageNameFromArchivePath($fileName);
 
             $backups[] = [
                 'name' => $imageName,
@@ -138,7 +140,7 @@ final readonly class ImageRestoreService
     {
         $this->logger->info("Validating archive: {$archivePath}");
 
-        $failureReason = ArchiveValidator::validateLightweight($archivePath);
+        $failureReason = ArchiveInspector::lightweightFailureReason($archivePath);
         if ($failureReason !== null) {
             throw new RestoreException(
                 'Invalid archive format: ' . basename($archivePath) . ". {$failureReason}"
@@ -157,40 +159,22 @@ final readonly class ImageRestoreService
     private function validateArchiveDeep(string $archivePath): void
     {
         $backupDir = dirname($archivePath);
-        $archiveFilename = basename($archivePath);
         $hostBackupDir = $this->getHostPath($backupDir);
-
-        // Test archive integrity using Docker (like VolumeRestoreService)
-        $isCompressed = str_ends_with($archiveFilename, '.tar.gz');
-        $testCommand = $isCompressed
-            ? ['tar', 'tzf', "/backup/{$archiveFilename}"]
-            : ['tar', 'tf', "/backup/{$archiveFilename}"];
+        $archiveFilename = basename($archivePath);
 
         try {
-            $hostTarResult = ArchiveValidator::listContentsWithHostTar($archivePath);
-            if ($hostTarResult['available']) {
-                $this->validateArchiveListResult(
-                    $archiveFilename,
-                    $hostTarResult['successful'],
-                    $hostTarResult['output'],
-                    $hostTarResult['error']
-                );
-
-                return;
-            }
-
-            $process = $this->dockerService->runContainer([
-                '--rm',
-                '--mount', "type=bind,source={$hostBackupDir},target=/backup,readonly",
-                'alpine',
-                ...$testCommand,
-            ]);
+            $validationResult = ArchiveInspector::validateDeep(
+                $archivePath,
+                $this->dockerService,
+                $hostBackupDir,
+                DockerHelperImage::name()
+            );
 
             $this->validateArchiveListResult(
                 $archiveFilename,
-                $process->isSuccessful(),
-                $process->getOutput(),
-                $process->getErrorOutput()
+                $validationResult['successful'],
+                $validationResult['output'],
+                $validationResult['error']
             );
         } catch (RestoreException $e) {
             throw $e;
@@ -222,10 +206,8 @@ final readonly class ImageRestoreService
 
     private function extractImageInfoFromArchive(string $archivePath): array
     {
-        $fileName = basename($archivePath);
-        $imageName = $this->extractImageNameFromFilename($fileName);
-        $manifest = $this->readManifestFromArchive($archivePath);
-        $repoTags = $this->extractRepoTagsFromManifest($manifest);
+        $imageName = ArchiveNamer::imageNameFromArchivePath($archivePath);
+        $repoTags = ArchiveInspector::imageRepoTags($archivePath);
         if ($repoTags !== []) {
             return [
                 'name' => $repoTags[0],
@@ -239,46 +221,6 @@ final readonly class ImageRestoreService
             'repoTags' => [$imageName],
             'archive' => $archivePath,
         ];
-    }
-
-    private function extractImageNameFromFilename(string $fileName): string
-    {
-        // Remove file extensions
-        $name = preg_replace('/\.(tar\.gz|tar)$/', '', $fileName);
-
-        if (!is_string($name) || $name === '') {
-            return 'unknown';
-        }
-
-        if (preg_match('/%[0-9A-Fa-f]{2}/', $name)) {
-            return rawurldecode($name);
-        }
-
-        return $this->extractLegacyImageName($name);
-    }
-
-    private function extractLegacyImageName(string $fileNameWithoutExtension): string
-    {
-        $parts = explode('_', $fileNameWithoutExtension);
-        if (count($parts) < 2) {
-            return $fileNameWithoutExtension;
-        }
-
-        $tag = array_pop($parts);
-
-        if (count($parts) >= 2 && in_array($parts[0], ['docker', 'ghcr', 'quay'], true)) {
-            $registry = array_shift($parts) . '.' . array_shift($parts);
-
-            return $registry . '/' . implode('/', $parts) . ':' . $tag;
-        }
-
-        if (str_contains($parts[0], '.')) {
-            $registry = array_shift($parts);
-
-            return $registry . '/' . implode('/', $parts) . ':' . $tag;
-        }
-
-        return implode('_', $parts) . ':' . $tag;
     }
 
     private function imageAlreadyExists(array $imageInfo): bool
@@ -301,7 +243,7 @@ final readonly class ImageRestoreService
 
     private function performImageRestore(string $archivePath): void
     {
-        if (str_ends_with($archivePath, '.tar.gz')) {
+        if (ArchiveNamer::isCompressed($archivePath)) {
             // Use pipe with gunzip for compressed files
             $this->performCompressedImageRestore($archivePath);
         } else {
@@ -333,46 +275,5 @@ final readonly class ImageRestoreService
         } finally {
             gzclose($inputHandle);
         }
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function readManifestFromArchive(string $archivePath): array
-    {
-        $manifestJson = ArchiveValidator::readFileFromArchive($archivePath, 'manifest.json');
-        if ($manifestJson === null) {
-            return [];
-        }
-
-        $manifest = json_decode($manifestJson, true);
-        if (!is_array($manifest)) {
-            return [];
-        }
-
-        return $manifest;
-    }
-
-    /**
-     * @param array<int, array<string, mixed>> $manifest
-     *
-     * @return string[]
-     */
-    private function extractRepoTagsFromManifest(array $manifest): array
-    {
-        $repoTags = [];
-        foreach ($manifest as $entry) {
-            if (!isset($entry['RepoTags']) || !is_array($entry['RepoTags'])) {
-                continue;
-            }
-
-            foreach ($entry['RepoTags'] as $repoTag) {
-                if (is_string($repoTag) && $repoTag !== '<none>:<none>' && $repoTag !== '') {
-                    $repoTags[] = $repoTag;
-                }
-            }
-        }
-
-        return array_values(array_unique($repoTags));
     }
 }

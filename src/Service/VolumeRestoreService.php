@@ -6,7 +6,9 @@ namespace DockerVol\Service;
 
 use DockerVol\Contract\DockerServiceInterface;
 use DockerVol\Exception\RestoreException;
-use DockerVol\Helper\ArchiveValidator;
+use DockerVol\Helper\ArchiveInspector;
+use DockerVol\Helper\ArchiveNamer;
+use DockerVol\Helper\DockerHelperImage;
 use DockerVol\Trait\BackupFileSystemTrait;
 use DockerVol\ValueObject\RestoreResult;
 use Psr\Log\LoggerInterface;
@@ -56,7 +58,7 @@ final readonly class VolumeRestoreService
         bool $createVolume = true,
         bool $deepValidate = false
     ): RestoreResult {
-        $volumeName = $this->extractVolumeNameFromPath($archivePath);
+        $volumeName = ArchiveNamer::volumeNameFromArchivePath($archivePath);
         $this->logger->info("Starting restore of volume: {$volumeName} from {$archivePath}");
 
         try {
@@ -123,15 +125,15 @@ final readonly class VolumeRestoreService
         }
 
         $backups = [];
-        $files = glob($backupDirectory . '/*.{tar,tar.gz}', GLOB_BRACE);
+        $files = glob($backupDirectory . '/' . ArchiveNamer::archiveGlob(), GLOB_BRACE);
 
         foreach ($files ?: [] as $file) {
             if (!is_file($file)) {
                 continue;
             }
 
-            $volumeName = $this->extractVolumeNameFromPath($file);
-            $compressed = str_ends_with($file, '.tar.gz');
+            $volumeName = ArchiveNamer::volumeNameFromArchivePath($file);
+            $compressed = ArchiveNamer::isCompressed($file);
             $size = filesize($file) ?: 0;
 
             $backups[$volumeName] = [
@@ -143,22 +145,6 @@ final readonly class VolumeRestoreService
         }
 
         return $backups;
-    }
-
-    private function extractVolumeNameFromPath(string $archivePath): string
-    {
-        $filename = basename($archivePath);
-
-        // Remove .tar.gz or .tar extension
-        if (str_ends_with($filename, '.tar.gz')) {
-            return substr($filename, 0, -7);
-        }
-
-        if (str_ends_with($filename, '.tar')) {
-            return substr($filename, 0, -4);
-        }
-
-        throw new RestoreException("Invalid archive file format: {$filename}. Expected .tar or .tar.gz");
     }
 
     private function createVolume(string $volumeName): void
@@ -175,7 +161,7 @@ final readonly class VolumeRestoreService
         $this->dockerService->runContainer([
             '--rm',
             '--mount', "type=volume,source={$volumeName},target=/volume",
-            'alpine',
+            DockerHelperImage::name(),
             'sh', '-c', 'rm -rf /volume/* /volume/.[!.]* /volume/..?*',
         ]);
     }
@@ -189,7 +175,7 @@ final readonly class VolumeRestoreService
         $hostBackupDir = $this->getHostPath($backupDir);
 
         // Determine if archive is compressed
-        $isCompressed = str_ends_with($archiveFilename, '.tar.gz');
+        $isCompressed = ArchiveNamer::isCompressed($archiveFilename);
 
         $tarCommand = $isCompressed
             ? ['tar', 'xzf', "/backup/{$archiveFilename}", '-C', '/volume']
@@ -199,7 +185,7 @@ final readonly class VolumeRestoreService
             '--rm',
             '--mount', "type=volume,source={$volumeName},target=/volume",
             '--mount', "type=bind,source={$hostBackupDir},target=/backup,readonly",
-            'alpine',
+            DockerHelperImage::name(),
             ...$tarCommand,
         ];
 
@@ -215,7 +201,7 @@ final readonly class VolumeRestoreService
             $process = $this->dockerService->runContainer([
                 '--rm',
                 '--mount', "type=volume,source={$volumeName},target=/volume,readonly",
-                'alpine',
+                DockerHelperImage::name(),
                 'du', '-sb', '/volume',
             ]);
 
@@ -236,14 +222,14 @@ final readonly class VolumeRestoreService
     {
         $this->logger->info("Validating archive: {$archivePath}");
 
-        $failureReason = ArchiveValidator::validateLightweight($archivePath);
+        $failureReason = ArchiveInspector::lightweightFailureReason($archivePath);
         if ($failureReason !== null) {
             throw new RestoreException(
                 'Invalid archive format: ' . basename($archivePath) . ". {$failureReason}"
             );
         }
 
-        $unsafeEntryReason = ArchiveValidator::validateEntriesForExtraction($archivePath);
+        $unsafeEntryReason = ArchiveInspector::extractionFailureReason($archivePath);
         if ($unsafeEntryReason !== null) {
             throw new RestoreException(
                 'Unsafe archive contents: ' . basename($archivePath) . ". {$unsafeEntryReason}"
@@ -262,40 +248,22 @@ final readonly class VolumeRestoreService
     private function validateArchiveDeep(string $archivePath): void
     {
         $backupDir = dirname($archivePath);
-        $archiveFilename = basename($archivePath);
         $hostBackupDir = $this->getHostPath($backupDir);
-
-        // Test archive integrity by trying to list contents
-        $isCompressed = str_ends_with($archiveFilename, '.tar.gz');
-        $testCommand = $isCompressed
-            ? ['tar', 'tzf', "/backup/{$archiveFilename}"]
-            : ['tar', 'tf', "/backup/{$archiveFilename}"];
+        $archiveFilename = basename($archivePath);
 
         try {
-            $hostTarResult = ArchiveValidator::listContentsWithHostTar($archivePath);
-            if ($hostTarResult['available']) {
-                $this->validateArchiveListResult(
-                    $archiveFilename,
-                    $hostTarResult['successful'],
-                    $hostTarResult['output'],
-                    $hostTarResult['error']
-                );
-
-                return;
-            }
-
-            $process = $this->dockerService->runContainer([
-                '--rm',
-                '--mount', "type=bind,source={$hostBackupDir},target=/backup,readonly",
-                'alpine',
-                ...$testCommand,
-            ]);
+            $validationResult = ArchiveInspector::validateDeep(
+                $archivePath,
+                $this->dockerService,
+                $hostBackupDir,
+                DockerHelperImage::name()
+            );
 
             $this->validateArchiveListResult(
                 $archiveFilename,
-                $process->isSuccessful(),
-                $process->getOutput(),
-                $process->getErrorOutput()
+                $validationResult['successful'],
+                $validationResult['output'],
+                $validationResult['error']
             );
         } catch (RestoreException $e) {
             throw $e;
