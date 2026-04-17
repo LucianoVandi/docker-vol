@@ -103,13 +103,9 @@ class BackupRestoreCommandsTest extends TestCase
         $archivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode($imageReference) . '.tar';
         $dockerService = $this->createMock(DockerServiceInterface::class);
 
+        $dockerService->expects($this->never())->method('listImages');
         $dockerService
-            ->expects($this->once())
-            ->method('listImages')
-            ->willReturn([$this->createTestImage(repoTags: [$imageReference])])
-        ;
-        $dockerService
-            ->expects($this->once())
+            ->expects($this->exactly(2))
             ->method('imageExists')
             ->with($imageReference)
             ->willReturn(true)
@@ -139,6 +135,63 @@ class BackupRestoreCommandsTest extends TestCase
         $this->assertSame(Command::SUCCESS, $exitCode);
         $this->assertStringContainsString('Docker Image Backup', $tester->getDisplay());
         $this->assertFileExists($archivePath);
+    }
+
+    public function testBackupImagesCommandAcceptsDigestReference(): void
+    {
+        $backupDir = $this->createTempDirectory();
+        $digestRef = 'sha256:abc123def456abc123def456abc123def456abc123def456abc123def456abc1';
+        $archivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode($digestRef) . '.tar.gz';
+        $dockerService = $this->createMock(DockerServiceInterface::class);
+
+        $dockerService->expects($this->never())->method('listImages');
+        $dockerService
+            ->expects($this->exactly(2))
+            ->method('imageExists')
+            ->with($digestRef)
+            ->willReturn(true)
+        ;
+        $dockerService
+            ->expects($this->once())
+            ->method('streamSavedImage')
+            ->willReturnCallback(function (string $ref, callable $onChunk) {
+                $onChunk('some-tar-data');
+
+                return $this->createMockProcess(0, '');
+            })
+        ;
+
+        $tester = new CommandTester(new BackupImagesCommand(new ImageBackupService($dockerService)));
+
+        $exitCode = $tester->execute([
+            'images' => [$digestRef],
+            '--output-dir' => $backupDir,
+        ]);
+
+        $this->assertSame(Command::SUCCESS, $exitCode);
+        $this->assertFileExists($archivePath);
+    }
+
+    public function testBackupImagesCommandRejectsUnknownDigest(): void
+    {
+        $dockerService = $this->createMock(DockerServiceInterface::class);
+        $dockerService->expects($this->never())->method('listImages');
+        $dockerService
+            ->expects($this->once())
+            ->method('imageExists')
+            ->with('sha256:deadbeef')
+            ->willReturn(false)
+        ;
+
+        $tester = new CommandTester(new BackupImagesCommand(new ImageBackupService($dockerService)));
+
+        $exitCode = $tester->execute([
+            'images' => ['sha256:deadbeef'],
+            '--output-dir' => sys_get_temp_dir(),
+        ]);
+
+        $this->assertSame(Command::FAILURE, $exitCode);
+        $this->assertStringContainsString('do not exist', $tester->getDisplay());
     }
 
     public function testBackupImagesListCountsRenderedRowsForMultiTagImages(): void

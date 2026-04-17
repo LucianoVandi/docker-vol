@@ -274,4 +274,21 @@ class VolumeRestoreServiceTest extends TestCase
         $this->assertArrayHasKey('real-volume', $backups);
         $this->assertSame($archivePath, $backups['real-volume']['path']);
     }
+
+    public function testGetAvailableBackupsListsBothTarAndTarGzWithoutGlobBrace(): void
+    {
+        $backupDir = $this->createTempDirectory();
+        $tarPath = $backupDir . DIRECTORY_SEPARATOR . 'alpha.tar';
+        $tarGzPath = $backupDir . DIRECTORY_SEPARATOR . 'beta.tar.gz';
+        $this->writeTarArchive($tarPath);
+        $this->writeTarArchive($tarGzPath);
+
+        $backups = $this->restoreService->getAvailableBackups($backupDir);
+
+        $this->assertCount(2, $backups);
+        $this->assertArrayHasKey('alpha', $backups);
+        $this->assertArrayHasKey('beta', $backups);
+        $this->assertFalse($backups['alpha']['compressed']);
+        $this->assertTrue($backups['beta']['compressed']);
+    }
 }

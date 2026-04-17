@@ -86,6 +86,11 @@ final readonly class ImageBackupService
         }
     }
 
+    public function imageExists(string $imageReference): bool
+    {
+        return $this->dockerService->imageExists($imageReference);
+    }
+
     /**
      * @return DockerImage[]
      */

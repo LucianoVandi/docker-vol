@@ -47,7 +47,9 @@ class DockerService implements DockerServiceInterface
             return $volumes;
         } catch (DockerCommandException $e) {
             throw new DockerCommandException(
-                'Failed to list volumes. Please ensure Docker 23+ is installed: ' . $e->getMessage()
+                'Failed to list volumes. Please ensure Docker 23+ is installed: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
             );
         }
     }
@@ -85,7 +87,9 @@ class DockerService implements DockerServiceInterface
             return $images;
         } catch (DockerCommandException $e) {
             throw new DockerCommandException(
-                'Failed to list images. Please ensure Docker 23+ is installed: ' . $e->getMessage()
+                'Failed to list images. Please ensure Docker 23+ is installed: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
             );
         }
     }

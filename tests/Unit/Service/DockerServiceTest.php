@@ -73,6 +73,78 @@ class DockerServiceTest extends TestCase
         }
     }
 
+    public function testListImagesPreservesExitCodeAndPreviousException(): void
+    {
+        $binDir = $this->createTempDirectory();
+        $dockerPath = $binDir . DIRECTORY_SEPARATOR . 'docker';
+        file_put_contents($dockerPath, "#!/bin/sh\necho 'images error' >&2\nexit 7\n");
+        chmod($dockerPath, 0755);
+
+        $previousPath = getenv('PATH') ?: '';
+        $previousServerPath = $_SERVER['PATH'] ?? null;
+        $previousEnvPath = $_ENV['PATH'] ?? null;
+        $testPath = $binDir . PATH_SEPARATOR . $previousPath;
+        putenv('PATH=' . $testPath);
+        $_SERVER['PATH'] = $testPath;
+        $_ENV['PATH'] = $testPath;
+
+        try {
+            (new DockerService())->listImages();
+            $this->fail('Expected DockerCommandException was not thrown.');
+        } catch (DockerCommandException $exception) {
+            $this->assertSame(7, $exception->getCode());
+            $this->assertInstanceOf(DockerCommandException::class, $exception->getPrevious());
+        } finally {
+            putenv('PATH=' . $previousPath);
+            if ($previousServerPath === null) {
+                unset($_SERVER['PATH']);
+            } else {
+                $_SERVER['PATH'] = $previousServerPath;
+            }
+            if ($previousEnvPath === null) {
+                unset($_ENV['PATH']);
+            } else {
+                $_ENV['PATH'] = $previousEnvPath;
+            }
+        }
+    }
+
+    public function testListVolumesPreservesExitCodeAndPreviousException(): void
+    {
+        $binDir = $this->createTempDirectory();
+        $dockerPath = $binDir . DIRECTORY_SEPARATOR . 'docker';
+        file_put_contents($dockerPath, "#!/bin/sh\necho 'volumes error' >&2\nexit 5\n");
+        chmod($dockerPath, 0755);
+
+        $previousPath = getenv('PATH') ?: '';
+        $previousServerPath = $_SERVER['PATH'] ?? null;
+        $previousEnvPath = $_ENV['PATH'] ?? null;
+        $testPath = $binDir . PATH_SEPARATOR . $previousPath;
+        putenv('PATH=' . $testPath);
+        $_SERVER['PATH'] = $testPath;
+        $_ENV['PATH'] = $testPath;
+
+        try {
+            (new DockerService())->listVolumes();
+            $this->fail('Expected DockerCommandException was not thrown.');
+        } catch (DockerCommandException $exception) {
+            $this->assertSame(5, $exception->getCode());
+            $this->assertInstanceOf(DockerCommandException::class, $exception->getPrevious());
+        } finally {
+            putenv('PATH=' . $previousPath);
+            if ($previousServerPath === null) {
+                unset($_SERVER['PATH']);
+            } else {
+                $_SERVER['PATH'] = $previousServerPath;
+            }
+            if ($previousEnvPath === null) {
+                unset($_ENV['PATH']);
+            } else {
+                $_ENV['PATH'] = $previousEnvPath;
+            }
+        }
+    }
+
     public function testListVolumesIgnoresMalformedJsonLines(): void
     {
         $binDir = $this->createTempDirectory();
