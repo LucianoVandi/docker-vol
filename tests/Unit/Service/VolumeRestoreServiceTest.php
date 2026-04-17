@@ -7,6 +7,7 @@ namespace DockerVol\Tests\Unit\Service;
 use DockerVol\Contract\DockerServiceInterface;
 use DockerVol\Exception\DockerCommandException;
 use DockerVol\Exception\RestoreException;
+use DockerVol\Helper\ArchiveMetadata;
 use DockerVol\Service\VolumeRestoreService;
 use DockerVol\Tests\TestCase;
 
@@ -290,5 +291,61 @@ class VolumeRestoreServiceTest extends TestCase
         $this->assertArrayHasKey('beta', $backups);
         $this->assertFalse($backups['alpha']['compressed']);
         $this->assertTrue($backups['beta']['compressed']);
+    }
+
+    public function testRestoreFailsOnChecksumMismatch(): void
+    {
+        $archivePath = $this->createTempTarArchive('.tar.gz');
+        $volumeName = basename($archivePath, '.tar.gz');
+
+        // Write sidecar with wrong checksum
+        $sidecarPath = ArchiveMetadata::sidecarPath($archivePath);
+        file_put_contents($sidecarPath, json_encode([
+            'checksum_sha256' => str_repeat('0', 64),
+        ]));
+
+        $this->dockerService
+            ->expects($this->never())
+            ->method('volumeExists')
+        ;
+
+        $result = $this->restoreService->restoreSingleVolume($archivePath);
+
+        $this->assertTrue($result->isFailed());
+        $this->assertStringContainsString('Checksum mismatch', $result->message);
+    }
+
+    public function testRestoreSkipsChecksumCheckWhenNoSidecar(): void
+    {
+        $archivePath = $this->createTempTarArchive('.tar.gz');
+        $volumeName = basename($archivePath, '.tar.gz');
+
+        // No sidecar at all - should not throw on checksum
+        $this->dockerService
+            ->expects($this->once())
+            ->method('volumeExists')
+            ->with($volumeName)
+            ->willReturn(false)
+        ;
+
+        $this->dockerService
+            ->expects($this->once())
+            ->method('createVolume')
+            ->with($volumeName)
+            ->willReturn($this->createMockProcess(0, $volumeName))
+        ;
+
+        $this->dockerService
+            ->expects($this->exactly(2))
+            ->method('runContainer')
+            ->willReturnOnConsecutiveCalls(
+                $this->createMockProcess(0, 'ok'),
+                $this->createMockProcess(0, "12\t/volume\n")
+            )
+        ;
+
+        $result = $this->restoreService->restoreSingleVolume($archivePath);
+
+        $this->assertTrue($result->isSuccessful());
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DockerVol\Tests\Unit\Service;
 
 use DockerVol\Contract\DockerServiceInterface;
+use DockerVol\Helper\ArchiveMetadata;
 use DockerVol\Service\ImageRestoreService;
 use DockerVol\Tests\TestCase;
 
@@ -255,5 +256,47 @@ class ImageRestoreServiceTest extends TestCase
         }
 
         file_put_contents($archivePath, $tarContent);
+    }
+
+    public function testRestoreFailsOnChecksumMismatchWithSidecar(): void
+    {
+        $backupDir = $this->createTempDirectory();
+        $archivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode('nginx:latest') . '.tar.gz';
+        $this->writeImageArchiveWithManifest($archivePath, ['nginx:latest']);
+
+        // Write sidecar with wrong checksum
+        $sidecarPath = ArchiveMetadata::sidecarPath($archivePath);
+        file_put_contents($sidecarPath, json_encode([
+            'checksum_sha256' => str_repeat('0', 64),
+        ]));
+
+        $result = $this->restoreService->restoreSingleImage($archivePath);
+
+        $this->assertTrue($result->isFailed());
+        $this->assertStringContainsString('Checksum mismatch', $result->message);
+    }
+
+    public function testRestoreSkipsChecksumCheckWhenNoSidecar(): void
+    {
+        $backupDir = $this->createTempDirectory();
+        $archivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode('nginx:latest') . '.tar';
+        $this->writeImageArchiveWithManifest($archivePath, ['nginx:latest']);
+
+        // No sidecar - should not throw on checksum
+        $this->dockerService
+            ->expects($this->once())
+            ->method('imageExists')
+            ->with('nginx:latest')
+            ->willReturn(false)
+        ;
+
+        $this->dockerService
+            ->expects($this->once())
+            ->method('loadImage')
+        ;
+
+        $result = $this->restoreService->restoreSingleImage($archivePath);
+
+        $this->assertTrue($result->isSuccessful());
     }
 }
