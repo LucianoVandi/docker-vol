@@ -57,11 +57,9 @@ class CommandHelper
         $paths = [];
 
         foreach ($archiveNames as $archiveName) {
-            // If it's already an absolute path, use it as-is
-            if (str_starts_with($archiveName, '/')) {
+            if (self::isAbsolutePath($archiveName)) {
                 $paths[] = $archiveName;
             } else {
-                // Resolve relative to backup directory
                 $paths[] = $backupDir . DIRECTORY_SEPARATOR . $archiveName;
             }
         }
@@ -122,5 +120,22 @@ class CommandHelper
     public static function getArchiveExtension(bool $compress): string
     {
         return ArchiveNamer::extension($compress);
+    }
+
+    private static function isAbsolutePath(string $path): bool
+    {
+        if (str_starts_with($path, '/')) {
+            return true;
+        }
+
+        if (preg_match('/^[A-Za-z]:[\\\\\/]/', $path) === 1) {
+            return true;
+        }
+
+        if (str_starts_with($path, '\\\\') || str_starts_with($path, '//')) {
+            return true;
+        }
+
+        return false;
     }
 }

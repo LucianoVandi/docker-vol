@@ -109,7 +109,11 @@ final readonly class ImageRestoreService
         }
 
         $backups = [];
-        $files = glob($backupDirectory . '/' . ArchiveNamer::archiveGlob(), GLOB_BRACE);
+        $files = array_merge(
+            glob($backupDirectory . '/*.tar') ?: [],
+            glob($backupDirectory . '/*.tar.gz') ?: [],
+        );
+        sort($files);
 
         foreach ($files ?: [] as $filePath) {
             if (!is_file($filePath)) {

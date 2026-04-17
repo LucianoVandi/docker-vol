@@ -125,7 +125,11 @@ final readonly class VolumeRestoreService
         }
 
         $backups = [];
-        $files = glob($backupDirectory . '/' . ArchiveNamer::archiveGlob(), GLOB_BRACE);
+        $files = array_merge(
+            glob($backupDirectory . '/*.tar') ?: [],
+            glob($backupDirectory . '/*.tar.gz') ?: [],
+        );
+        sort($files);
 
         foreach ($files ?: [] as $file) {
             if (!is_file($file)) {

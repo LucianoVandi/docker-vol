@@ -82,11 +82,14 @@ HELP;
 
     protected function validateResourcesExist(array $imageReferences, SymfonyStyle $io): int
     {
-        // Get available images and extract all possible references
-        $availableImages = $this->imageBackupService->getAvailableImages();
-        $availableImageRefs = $this->extractImageReferences($availableImages);
+        $invalidImages = [];
 
-        $invalidImages = $this->findInvalidImageReferences($imageReferences, $availableImageRefs);
+        foreach ($imageReferences as $imageRef) {
+            if (!$this->imageBackupService->imageExists($imageRef)) {
+                $invalidImages[] = $imageRef;
+            }
+        }
+
         if (!empty($invalidImages)) {
             $io->error('The following images do not exist:');
             foreach ($invalidImages as $invalid) {
@@ -181,55 +184,6 @@ HELP;
     protected function applyDockerTimeout(int $seconds): void
     {
         $this->imageBackupService->setDockerTimeout($seconds);
-    }
-
-    private function extractImageReferences(array $images): array
-    {
-        $references = [];
-
-        foreach ($images as $image) {
-            // Add image ID
-            $references[] = $image->id;
-            $references[] = $image->getShortId();
-
-            // Add all repository tags
-            foreach ($image->repoTags as $tag) {
-                $references[] = $tag;
-            }
-        }
-
-        return array_unique($references);
-    }
-
-    private function findInvalidImageReferences(array $requestedImages, array $availableRefs): array
-    {
-        $invalid = [];
-
-        foreach ($requestedImages as $imageRef) {
-            $found = false;
-
-            // Check exact match first
-            if (in_array($imageRef, $availableRefs, true)) {
-                $found = true;
-            } else {
-                // Check if it's a partial ID match (at least 12 chars)
-                if (strlen($imageRef) >= 12) {
-                    foreach ($availableRefs as $availableRef) {
-                        if (str_starts_with($availableRef, $imageRef)) {
-                            $found = true;
-
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (!$found) {
-                $invalid[] = $imageRef;
-            }
-        }
-
-        return $invalid;
     }
 
     /**
