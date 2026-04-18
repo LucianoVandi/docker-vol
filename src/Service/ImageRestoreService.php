@@ -160,6 +160,13 @@ final readonly class ImageRestoreService
             );
         }
 
+        $manifestFailure = ArchiveInspector::imageManifestFailureReason($archivePath);
+        if ($manifestFailure !== null) {
+            throw new RestoreException(
+                'Invalid image archive: ' . basename($archivePath) . ". {$manifestFailure}"
+            );
+        }
+
         if (!$deepValidate) {
             $this->logger->info('Archive lightweight validation successful');
 

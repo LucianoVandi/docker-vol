@@ -88,6 +88,32 @@ abstract class TestCase extends PHPUnitTestCase
     }
 
     /**
+     * @param string[] $repoTags
+     */
+    protected function writeImageArchiveWithManifest(string $archivePath, array $repoTags): void
+    {
+        $manifest = json_encode([
+            [
+                'Config' => 'config.json',
+                'RepoTags' => $repoTags,
+                'Layers' => ['layer.tar'],
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        $tarContent = $this->createTarContentFromEntries([
+            ['name' => 'manifest.json', 'content' => $manifest],
+            ['name' => 'config.json', 'content' => '{}'],
+            ['name' => 'layer.tar', 'content' => $this->createTarContent('file.txt', 'content')],
+        ]);
+
+        if (str_ends_with($archivePath, '.tar.gz')) {
+            $tarContent = gzencode($tarContent);
+        }
+
+        file_put_contents($archivePath, $tarContent);
+    }
+
+    /**
      * Helper to create a temporary directory
      */
     protected function createTempDirectory(string $prefix = 'dockervol_test'): string

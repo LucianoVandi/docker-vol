@@ -8,6 +8,10 @@ final class ArchiveMetadata
 {
     public const VERSION = 2;
 
+    public const SIDECAR_MISSING = 'missing';
+    public const SIDECAR_CORRUPTED = 'corrupted';
+    public const SIDECAR_VALID = 'valid';
+
     /**
      * @param array<string, mixed> $metadata
      */
@@ -35,14 +39,10 @@ final class ArchiveMetadata
         return file_put_contents(self::sidecarPath($archivePath), $json . "\n") !== false;
     }
 
-    public const SIDECAR_MISSING = 'missing';
-    public const SIDECAR_CORRUPTED = 'corrupted';
-    public const SIDECAR_VALID = 'valid';
-
     /**
      * Result of reading a sidecar file.
      *
-     * @return array{status: self::SIDECAR_*, data: array<string, mixed>|null} $result
+     * @return array{status: self::SIDECAR_*, data: null|array<string, mixed>} $result
      */
     public static function readSidecarWithStatus(string $archivePath): array
     {
@@ -71,6 +71,7 @@ final class ArchiveMetadata
     public static function readSidecar(string $archivePath): ?array
     {
         $result = self::readSidecarWithStatus($archivePath);
+
         return $result['data'];
     }
 

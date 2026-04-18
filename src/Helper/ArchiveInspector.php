@@ -85,4 +85,38 @@ final class ArchiveInspector
     {
         return ArchiveValidator::validateEntriesForExtraction($archivePath);
     }
+
+    public static function imageManifestFailureReason(string $archivePath): ?string
+    {
+        $manifestJson = ArchiveValidator::readFileFromArchive($archivePath, 'manifest.json');
+        if ($manifestJson === null) {
+            return 'Archive does not contain manifest.json';
+        }
+
+        try {
+            $manifest = json_decode($manifestJson, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return 'manifest.json contains invalid JSON';
+        }
+
+        if (!is_array($manifest) || $manifest === []) {
+            return 'manifest.json must be a non-empty JSON array';
+        }
+
+        foreach ($manifest as $index => $entry) {
+            if (!is_array($entry)) {
+                return "manifest.json entry {$index} is not an object";
+            }
+
+            if (!isset($entry['Config']) || !is_string($entry['Config']) || $entry['Config'] === '') {
+                return "manifest.json entry {$index} is missing required 'Config' field";
+            }
+
+            if (!isset($entry['Layers']) || !is_array($entry['Layers'])) {
+                return "manifest.json entry {$index} is missing required 'Layers' field";
+            }
+        }
+
+        return null;
+    }
 }

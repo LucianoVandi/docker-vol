@@ -62,7 +62,7 @@ class ImageRestoreServiceTest extends TestCase
         $backupDir = $this->createTempDirectory();
         $imageReference = 'registry.example.com/my_org/my_app:release_2026';
         $archivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode($imageReference) . '.tar';
-        $this->writeTarArchive($archivePath);
+        $this->writeImageArchiveWithManifest($archivePath, [$imageReference]);
 
         $this->dockerService->expects($this->never())->method('runContainer');
 
@@ -88,7 +88,7 @@ class ImageRestoreServiceTest extends TestCase
     {
         $backupDir = $this->createTempDirectory();
         $archivePath = $backupDir . DIRECTORY_SEPARATOR . 'docker_io_library_nginx_latest.tar';
-        $this->writeTarArchive($archivePath);
+        $this->writeImageArchiveWithManifest($archivePath, ['docker.io/library/nginx:latest']);
 
         $this->dockerService->expects($this->never())->method('runContainer');
 
@@ -232,30 +232,63 @@ class ImageRestoreServiceTest extends TestCase
         $this->assertSame($archivePath, $backups[0]['path']);
     }
 
-    /**
-     * @param string[] $repoTags
-     */
-    private function writeImageArchiveWithManifest(string $archivePath, array $repoTags): void
+    public function testRestoreFailsWhenManifestJsonMissing(): void
     {
-        $manifest = json_encode([
-            [
-                'Config' => 'config.json',
-                'RepoTags' => $repoTags,
-                'Layers' => ['layer.tar'],
-            ],
-        ], JSON_THROW_ON_ERROR);
+        $backupDir = $this->createTempDirectory();
+        $archivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode('nginx:latest') . '.tar';
+        $this->writeTarArchive($archivePath, 'layer.tar', 'data');
 
-        $tarContent = $this->createTarContentFromEntries([
-            ['name' => 'manifest.json', 'content' => $manifest],
-            ['name' => 'config.json', 'content' => '{}'],
-            ['name' => 'layer.tar', 'content' => $this->createTarContent('file.txt', 'content')],
-        ]);
+        $this->dockerService->expects($this->never())->method('loadImage');
 
-        if (str_ends_with($archivePath, '.tar.gz')) {
-            $tarContent = gzencode($tarContent);
-        }
+        $result = $this->restoreService->restoreSingleImage($archivePath);
 
+        $this->assertTrue($result->isFailed());
+        $this->assertStringContainsString('manifest.json', (string) $result->message);
+    }
+
+    public function testRestoreFailsWhenManifestJsonIsInvalidJson(): void
+    {
+        $backupDir = $this->createTempDirectory();
+        $archivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode('nginx:latest') . '.tar';
+        $tarContent = $this->createTarContent('manifest.json', 'not-json{');
         file_put_contents($archivePath, $tarContent);
+
+        $result = $this->restoreService->restoreSingleImage($archivePath);
+
+        $this->assertTrue($result->isFailed());
+        $this->assertStringContainsString('invalid JSON', (string) $result->message);
+    }
+
+    public function testRestoreFailsWhenManifestJsonMissingConfigField(): void
+    {
+        $backupDir = $this->createTempDirectory();
+        $archivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode('nginx:latest') . '.tar';
+        $manifest = json_encode([
+            ['RepoTags' => ['nginx:latest'], 'Layers' => ['layer.tar']],
+        ], JSON_THROW_ON_ERROR);
+        $tarContent = $this->createTarContent('manifest.json', $manifest);
+        file_put_contents($archivePath, $tarContent);
+
+        $result = $this->restoreService->restoreSingleImage($archivePath);
+
+        $this->assertTrue($result->isFailed());
+        $this->assertStringContainsString("'Config'", (string) $result->message);
+    }
+
+    public function testRestoreFailsWhenManifestJsonMissingLayersField(): void
+    {
+        $backupDir = $this->createTempDirectory();
+        $archivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode('nginx:latest') . '.tar';
+        $manifest = json_encode([
+            ['Config' => 'config.json', 'RepoTags' => ['nginx:latest']],
+        ], JSON_THROW_ON_ERROR);
+        $tarContent = $this->createTarContent('manifest.json', $manifest);
+        file_put_contents($archivePath, $tarContent);
+
+        $result = $this->restoreService->restoreSingleImage($archivePath);
+
+        $this->assertTrue($result->isFailed());
+        $this->assertStringContainsString("'Layers'", (string) $result->message);
     }
 
     public function testRestoreFailsOnChecksumMismatchWithSidecar(): void

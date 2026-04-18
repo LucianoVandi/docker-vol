@@ -218,7 +218,7 @@ class BackupRestoreCommandsTest extends TestCase
         $backupDir = $this->createTempDirectory();
         $imageReference = 'nginx:latest';
         $archivePath = $backupDir . DIRECTORY_SEPARATOR . rawurlencode($imageReference) . '.tar';
-        $this->writeTarArchive($archivePath);
+        $this->writeImageArchiveWithManifest($archivePath, [$imageReference]);
         $dockerService = $this->createMock(DockerServiceInterface::class);
 
         $dockerService->expects($this->never())->method('runContainer');
