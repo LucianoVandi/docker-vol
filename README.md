@@ -47,7 +47,7 @@ php dkvol-${VERSION}.phar --help
 
 ### System Requirements
 - **For standalone executables**: Docker installed and running
-- **For .phar file**: PHP 8.2+ + Docker CLI access
+- **For .phar file**: PHP 8.4.1+ + Docker CLI access
 - Access to Docker socket (`/var/run/docker.sock`)
 
 Standalone executables and `.phar` archives are distributed for multiple operating systems. Docker operations

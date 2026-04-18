@@ -204,7 +204,7 @@ jobs:
             
             - Docker installed and running
             - For standalone executables: No additional requirements
-            - For .phar file: PHP 8.2+ with Docker CLI access
+            - For .phar file: PHP 8.4.1+ with Docker CLI access
             
             ---
             
