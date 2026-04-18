@@ -7,12 +7,11 @@ namespace DockerVol\Tests\Unit\ValueObject;
 use DockerVol\Enum\OperationStatus;
 use DockerVol\Tests\TestCase;
 use DockerVol\ValueObject\BackupResult;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class AbstractResultTest extends TestCase
 {
-    /**
-     * @dataProvider formattedFileSizeProvider
-     */
+    #[DataProvider('formattedFileSizeProvider')]
     public function testGetFormattedFileSizeUsesSharedFormatter(?int $bytes, string $expected): void
     {
         $result = new BackupResult(

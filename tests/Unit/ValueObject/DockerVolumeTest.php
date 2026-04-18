@@ -6,6 +6,7 @@ namespace DockerVol\Tests\Unit\ValueObject;
 
 use DockerVol\Tests\TestCase;
 use DockerVol\ValueObject\DockerVolume;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class DockerVolumeTest extends TestCase
 {
@@ -122,9 +123,7 @@ class DockerVolumeTest extends TestCase
         new DockerVolume('invalid volume name with spaces');
     }
 
-    /**
-     * @dataProvider validVolumeNameProvider
-     */
+    #[DataProvider('validVolumeNameProvider')]
     public function testValidVolumeNames(string $volumeName): void
     {
         $volume = new DockerVolume($volumeName);
@@ -143,9 +142,7 @@ class DockerVolumeTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider invalidVolumeNameProvider
-     */
+    #[DataProvider('invalidVolumeNameProvider')]
     public function testInvalidVolumeNames(string $volumeName): void
     {
         $this->expectException(\InvalidArgumentException::class);

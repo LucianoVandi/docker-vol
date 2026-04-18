@@ -110,10 +110,16 @@ final readonly class ImageBackupService
                 throw new BackupException("Failed to move completed backup into place: {$archivePath}");
             }
 
-            ArchiveMetadata::writeSidecar($archivePath, [
+            $sidecarWritten = ArchiveMetadata::writeSidecar($archivePath, [
                 'source_type' => 'image',
                 'source' => $imageReference,
             ]);
+
+            if (!$sidecarWritten) {
+                $this->logger->warning('Failed to write archive metadata sidecar', [
+                    'archive' => $archivePath,
+                ]);
+            }
         } finally {
             if (file_exists($temporaryArchivePath)) {
                 @unlink($temporaryArchivePath);

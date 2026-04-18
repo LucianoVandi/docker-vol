@@ -6,6 +6,7 @@ namespace DockerVol\Tests\Unit\ValueObject;
 
 use DockerVol\Tests\TestCase;
 use DockerVol\ValueObject\DockerImage;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class DockerImageTest extends TestCase
 {
@@ -165,9 +166,7 @@ class DockerImageTest extends TestCase
         $this->assertEquals('abcdef123456', $image->getShortId());
     }
 
-    /**
-     * @dataProvider formattedSizeProvider
-     */
+    #[DataProvider('formattedSizeProvider')]
     public function testGetFormattedSize(int $bytes, string $expected): void
     {
         $image = new DockerImage($this->imageId, [], $bytes);
@@ -206,9 +205,7 @@ class DockerImageTest extends TestCase
         new DockerImage('invalid-image-id-with-special-chars!');
     }
 
-    /**
-     * @dataProvider validImageIdProvider
-     */
+    #[DataProvider('validImageIdProvider')]
     public function testValidImageIds(string $imageId): void
     {
         $image = new DockerImage($imageId);
@@ -227,9 +224,7 @@ class DockerImageTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider invalidImageIdProvider
-     */
+    #[DataProvider('invalidImageIdProvider')]
     public function testInvalidImageIds(string $imageId): void
     {
         $this->expectException(\InvalidArgumentException::class);

@@ -7,6 +7,7 @@ namespace DockerVol\Service;
 use DockerVol\Contract\DockerServiceInterface;
 use DockerVol\Exception\RestoreException;
 use DockerVol\Helper\ArchiveInspector;
+use DockerVol\Helper\ArchiveMetadata;
 use DockerVol\Helper\ArchiveNamer;
 use DockerVol\Helper\DockerHelperImage;
 use DockerVol\Trait\BackupFileSystemTrait;
@@ -144,10 +145,25 @@ final readonly class ImageRestoreService
     {
         $this->logger->info("Validating archive: {$archivePath}");
 
+        // Check checksum if sidecar is present
+        $checksumFailure = ArchiveMetadata::checksumFailureReason($archivePath);
+        if ($checksumFailure !== null) {
+            throw new RestoreException(
+                'Archive checksum verification failed: ' . basename($archivePath) . ". {$checksumFailure}"
+            );
+        }
+
         $failureReason = ArchiveInspector::lightweightFailureReason($archivePath);
         if ($failureReason !== null) {
             throw new RestoreException(
                 'Invalid archive format: ' . basename($archivePath) . ". {$failureReason}"
+            );
+        }
+
+        $manifestFailure = ArchiveInspector::imageManifestFailureReason($archivePath);
+        if ($manifestFailure !== null) {
+            throw new RestoreException(
+                'Invalid image archive: ' . basename($archivePath) . ". {$manifestFailure}"
             );
         }
 

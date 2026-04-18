@@ -106,10 +106,16 @@ final readonly class VolumeBackupService
                 throw new BackupException("Failed to move completed backup into place: {$archivePath}");
             }
 
-            ArchiveMetadata::writeSidecar($archivePath, [
+            $sidecarWritten = ArchiveMetadata::writeSidecar($archivePath, [
                 'source_type' => 'volume',
                 'source' => $volumeName,
             ]);
+
+            if (!$sidecarWritten) {
+                $this->logger->warning('Failed to write archive metadata sidecar', [
+                    'archive' => $archivePath,
+                ]);
+            }
         } finally {
             if (file_exists($temporaryArchivePath)) {
                 @unlink($temporaryArchivePath);

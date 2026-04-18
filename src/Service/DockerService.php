@@ -9,6 +9,7 @@ use DockerVol\Exception\DockerCommandException;
 use DockerVol\ValueObject\DockerImage;
 use DockerVol\ValueObject\DockerVolume;
 use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\InputStream;
 use Symfony\Component\Process\Process;
 
@@ -306,6 +307,19 @@ class DockerService implements DockerServiceInterface
             $process->mustRun();
 
             return $process;
+        } catch (ProcessTimedOutException $exception) {
+            $actualTimeout = $process->getTimeout();
+            $dockerCmd = $command[1] ?? implode(' ', array_slice($command, 1));
+
+            throw new DockerCommandException(
+                sprintf(
+                    'Docker command timed out after %d seconds (%s). Use --timeout to increase the timeout.',
+                    $actualTimeout,
+                    $dockerCmd
+                ),
+                $exception->getProcess()->getExitCode() ?? 1,
+                $exception
+            );
         } catch (ProcessFailedException $exception) {
             throw new DockerCommandException(
                 sprintf('Docker command failed: %s', $exception->getMessage()),
