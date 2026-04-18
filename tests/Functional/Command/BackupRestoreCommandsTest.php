@@ -14,6 +14,7 @@ use DockerVol\Service\ImageRestoreService;
 use DockerVol\Service\VolumeBackupService;
 use DockerVol\Service\VolumeRestoreService;
 use DockerVol\Tests\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 
@@ -276,9 +277,7 @@ class BackupRestoreCommandsTest extends TestCase
         yield 'negative' => ['-1'];
     }
 
-    /**
-     * @dataProvider invalidTimeoutProvider
-     */
+    #[DataProvider('invalidTimeoutProvider')]
     public function testBackupCommandRejectsInvalidTimeout(string $timeout): void
     {
         $dockerService = $this->createMock(DockerServiceInterface::class);
@@ -296,9 +295,7 @@ class BackupRestoreCommandsTest extends TestCase
         $this->assertStringContainsString('--timeout must be a positive integer.', $tester->getDisplay());
     }
 
-    /**
-     * @dataProvider invalidTimeoutProvider
-     */
+    #[DataProvider('invalidTimeoutProvider')]
     public function testRestoreCommandRejectsInvalidTimeout(string $timeout): void
     {
         $dockerService = $this->createMock(DockerServiceInterface::class);

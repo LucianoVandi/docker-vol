@@ -6,6 +6,7 @@ namespace DockerVol\Tests;
 
 use DockerVol\ValueObject\DockerImage;
 use DockerVol\ValueObject\DockerVolume;
+use PHPUnit\Framework\MockObject\Exception;
 use PHPUnit\Framework\TestCase as PHPUnitTestCase;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -89,6 +90,7 @@ abstract class TestCase extends PHPUnitTestCase
 
     /**
      * @param string[] $repoTags
+     * @throws \JsonException
      */
     protected function writeImageArchiveWithManifest(string $archivePath, array $repoTags): void
     {
@@ -242,10 +244,11 @@ abstract class TestCase extends PHPUnitTestCase
 
     /**
      * Helper to create a mock Process that simulates Docker commands
+     * @throws Exception
      */
     protected function createMockProcess(int $exitCode = 0, string $output = '', string $errorOutput = ''): Process
     {
-        $process = $this->createMock(Process::class);
+        $process = $this->createStub(Process::class);
 
         $process->method('run')->willReturn($exitCode);
         $process->method('isSuccessful')->willReturn($exitCode === 0);

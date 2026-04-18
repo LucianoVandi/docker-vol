@@ -7,6 +7,7 @@ namespace DockerVol\Tests\Unit\Service;
 use DockerVol\Contract\DockerServiceInterface;
 use DockerVol\Service\ImageBackupService;
 use DockerVol\Tests\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class ImageBackupServiceTest extends TestCase
 {
@@ -66,9 +67,7 @@ class ImageBackupServiceTest extends TestCase
         yield 'supported special characters' => ['ghcr.io/acme/api-worker:test.build-42_rc1'];
     }
 
-    /**
-     * @dataProvider imageReferencesProvider
-     */
+    #[DataProvider('imageReferencesProvider')]
     public function testBackupFilenamesPreserveImageReferenceCharacters(string $imageReference): void
     {
         $backupDir = $this->createTempDirectory();
@@ -150,7 +149,7 @@ class ImageBackupServiceTest extends TestCase
         $this->dockerService
             ->expects($this->once())
             ->method('streamSavedImage')
-            ->with($imageReference, $this->isType('callable'))
+            ->with($imageReference, $this->callback(static fn (mixed $value): bool => is_callable($value)))
             ->willReturnCallback(function (string $imageReference, callable $onChunk) {
                 $onChunk('tar-content');
 

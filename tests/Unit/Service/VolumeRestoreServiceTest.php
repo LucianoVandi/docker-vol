@@ -10,7 +10,9 @@ use DockerVol\Exception\RestoreException;
 use DockerVol\Helper\ArchiveMetadata;
 use DockerVol\Service\VolumeRestoreService;
 use DockerVol\Tests\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
+#[AllowMockObjectsWithoutExpectations]
 class VolumeRestoreServiceTest extends TestCase
 {
     private DockerServiceInterface $dockerService;

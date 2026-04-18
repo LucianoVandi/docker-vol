@@ -8,7 +8,9 @@ use DockerVol\Contract\DockerServiceInterface;
 use DockerVol\Helper\ArchiveMetadata;
 use DockerVol\Service\ImageRestoreService;
 use DockerVol\Tests\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
+#[AllowMockObjectsWithoutExpectations]
 class ImageRestoreServiceTest extends TestCase
 {
     private DockerServiceInterface $dockerService;

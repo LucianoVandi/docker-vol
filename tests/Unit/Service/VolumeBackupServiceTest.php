@@ -8,7 +8,9 @@ use DockerVol\Contract\DockerServiceInterface;
 use DockerVol\Exception\DockerCommandException;
 use DockerVol\Service\VolumeBackupService;
 use DockerVol\Tests\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
+#[AllowMockObjectsWithoutExpectations]
 class VolumeBackupServiceTest extends TestCase
 {
     private DockerServiceInterface $dockerService;
