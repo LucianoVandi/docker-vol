@@ -174,8 +174,23 @@ Volume backup and restore operations use a small helper container for tar and si
 updating the value deliberately lets you pick up base image security updates on your own schedule.
 
 Backups also write a best-effort JSON sidecar next to each archive, for example `postgres-data.tar.gz.json`. The sidecar
-contains source resource, compression, tool version, creation time, and archive checksum. Restore remains compatible with
-archives that do not have this metadata.
+contains source resource, compression, tool version, creation time, and archive checksum. Restore verifies the checksum
+when the sidecar is present and will fail if it doesn't match. Restore remains compatible with archives that do not
+have this metadata.
+
+`restore:volumes --overwrite` is **not transactional**: the target volume is cleaned before extraction begins.
+If the extraction fails partway, the volume remains empty. For critical data, back up the existing volume first.
+
+### Windows Caveats
+
+Windows binaries are provided for convenience, but volume backup and restore involve bind mounts and host filesystem paths
+that should be validated in your Docker Desktop or CI environment before relying on them. Bind mount behavior and path
+handling (e.g., `C:\` vs `/c/`) may differ across Windows versions and Docker configurations.
+
+### Relative Paths
+
+`--backup-dir` and `--output-dir` accept both absolute and relative paths. Relative paths are resolved from the current
+working directory where the command is executed.
 
 ## Development Setup
 
@@ -212,6 +227,7 @@ make test               # Run test suite
 make quality            # Run code quality checks
 make build-phar         # Create .phar file
 make build-standalone   # Create standalone executables
+make smoke-phar         # Verify built .phar works correctly
 ```
 
 ## Architecture
@@ -221,16 +237,24 @@ make build-standalone   # Create standalone executables
 ```
 ├── bin/console              # CLI entry point
 ├── src/
-│   ├── Command/            # CLI commands
-│   ├── Service/            # Business logic services
-│   ├── ValueObject/        # Immutable value objects
-│   ├── Exception/          # Custom exceptions
-│   └── Trait/              # Shared utilities
-├── tests/                  # Test suite
-├── docker-compose.yml      # Development environment
-├── Dockerfile              # Development container
+│   ├── Command/            # Symfony Console commands
+│   ├── Contract/          # Service interfaces
+│   ├── Enum/              # Enumerations
+│   ├── Exception/         # Custom exceptions
+│   ├── Helper/            # Utility classes (archives, Docker helpers)
+│   ├── Service/           # Business logic services
+│   ├── Trait/             # Shared traits for commands
+│   └── ValueObject/       # Immutable value objects
+├── tests/
+│   ├── Functional/        # Functional tests with CommandTester
+│   ├── Integration/       # Integration tests with real Docker
+│   └── Unit/              # Unit tests
+├── .github/workflows/     # CI/CD pipeline
+├── Dockerfile             # Development container
+├── docker-compose.yml     # Development environment
+├── Makefile               # Convenience commands
 ├── box.json               # .phar configuration
-└── .github/workflows/     # CI/CD pipeline
+└── composer.json          # PHP dependencies
 ```
 
 ### Key Components
@@ -288,15 +312,28 @@ Release assets are renamed with the pushed version tag:
 Releases are automatically created when you push a version tag:
 
 ```bash
+# Before tagging, verify:
+git status --short
+
 # Create and push a version tag
 git tag v1.0.0
 git push origin v1.0.0
 
-# GitHub Actions will automatically:
-# 1. Build all executables
-# 2. Create a GitHub release
-# 3. Upload all assets
+# After the release is published, verify assets:
+sha256sum -c SHA256SUMS.txt
 ```
+
+**Release checklist:**
+- [ ] `git status --short` shows no uncommitted changes
+- [ ] Version tag follows `v*.*.*` format
+- [ ] Release workflow completes successfully
+- [ ] All expected assets are present (`.phar`, standalone executables, `SHA256SUMS.txt`)
+- [ ] Checksums verify correctly with `sha256sum -c SHA256SUMS.txt`
+
+GitHub Actions will automatically:
+1. Build all executables
+2. Create a GitHub release
+3. Upload all assets
 
 ## Testing
 

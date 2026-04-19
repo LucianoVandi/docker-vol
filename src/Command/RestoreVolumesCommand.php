@@ -59,8 +59,11 @@ The <info>%command.name%</info> command restores Docker volumes from backup arch
 
 The command extracts compressed or uncompressed tar archives to Docker volumes.
 The target volume name is derived from the archive filename.
-Existing volumes are skipped unless --overwrite is used. With --overwrite, the target
-volume is cleaned before the archive is extracted into it.
+Existing volumes are skipped unless --overwrite is used.
+
+<comment>WARNING:</comment> With --overwrite, the target volume is cleaned before extraction begins.
+This operation is not transactional: if extraction fails partway, the volume will be empty.
+Back up critical data before overwriting.
 HELP;
     }
 

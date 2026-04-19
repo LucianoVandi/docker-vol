@@ -1,4 +1,4 @@
-.PHONY: help build dev install test quality clean
+.PHONY: help build dev install test quality clean smoke-phar
 
 DOCKER_COMPOSE := $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
 DEV_SERVICE := docker-vol-dev
@@ -38,6 +38,16 @@ build-phar: ## Crea il file .phar
 
 build-standalone: ## Crea eseguibili standalone
 	$(DOCKER_COMPOSE) exec $(DEV_SERVICE) /usr/local/bin/build.sh
+
+smoke-phar: ## Verifica il .phar appena buildato
+	@echo "=== PHAR Smoke Test ==="
+	@php dkvol.phar --version
+	@php dkvol.phar list
+	@php dkvol.phar backup:volumes --help
+	@php dkvol.phar restore:volumes --help
+	@php dkvol.phar backup:images --help
+	@php dkvol.phar restore:images --help
+	@echo "=== PHAR Smoke Test Passed ==="
 
 # Sviluppo
 shell: ## Accedi alla shell del container
