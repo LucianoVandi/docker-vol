@@ -6,7 +6,7 @@
     "require": {
         "php": ">=8.4.1",
         "symfony/console": "^6.4",
-        "symfony/process": "^6.4",
+        "symfony/process": "^8.0",
         "symfony/dotenv": "^6.4",
         "psr/log": "^3.0",
         "ext-zlib": "*"
